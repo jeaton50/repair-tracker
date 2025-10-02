@@ -1,7 +1,42 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useDeferredValue } from 'react';
 import { Search, Download, ChevronDown, ChevronUp, Upload, FileSpreadsheet, Save, Cloud } from 'lucide-react';
 import { db } from './firebase';
 import { collection, doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+
+/** Lightweight local-state text editor to avoid per-keystroke global updates */
+const TextCell = React.memo(function TextCell({
+  rowKey,
+  column,
+  initialValue,
+  onCommit,
+  onCancel,
+}) {
+  const [draft, setDraft] = React.useState(initialValue ?? "");
+
+  useEffect(() => {
+    setDraft(initialValue ?? "");
+  }, [initialValue]);
+
+  const commit = () => onCommit(rowKey, column, draft);
+
+  return (
+   <textarea
+  autoFocus
+  value={draft}
+  onChange={(e) => setDraft(e.target.value)}
+  onBlur={commit}
+  onKeyDown={(e) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      commit();
+    } else if (e.key === "Escape") {
+      if (onCancel) onCancel();
+    }
+  }}
+  className="w-full min-h-[60px] p-2 border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+  style={{ minWidth: "200px" }}
+/>
+  );
+});
 
 const RepairTrackerSheet = () => {
   const [activeTab, setActiveTab] = useState('combined');
@@ -24,17 +59,17 @@ const RepairTrackerSheet = () => {
   useEffect(() => {
     const loadXLSX = async () => {
       if (typeof XLSX !== 'undefined') return;
-      
+
       const script = document.createElement('script');
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-      
+
       return new Promise((resolve, reject) => {
         script.onload = resolve;
         script.onerror = reject;
         document.head.appendChild(script);
       });
     };
-    
+
     loadXLSX().catch(err => console.error('Failed to load XLSX:', err));
   }, []);
 
@@ -63,22 +98,22 @@ const RepairTrackerSheet = () => {
 
       const arrayBuffer = await file.arrayBuffer();
       const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
-      
-      const rawData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { 
-        header: 1, 
-        defval: "", 
-        raw: false 
+
+      const rawData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {
+        header: 1,
+        defval: "",
+        raw: false
       });
-      
+
       if (rawData.length < 2) {
         alert('File appears to be empty or has incorrect format');
         setLoading(false);
         return;
       }
-      
+
       const headers = rawData[1].map(h => String(h || '').trim()).filter(h => h);
       const dataRows = rawData.slice(2);
-      
+
       const data = dataRows
         .filter(row => row && row.some(cell => cell !== "" && cell !== null))
         .map(row => {
@@ -94,7 +129,7 @@ const RepairTrackerSheet = () => {
       } else {
         setReportData(data);
       }
-      
+
       alert(`Successfully loaded ${data.length} records from ${file.name}`);
     } catch (err) {
       alert(`Error reading file: ${err.message}`);
@@ -106,12 +141,12 @@ const RepairTrackerSheet = () => {
 
   const combinedData = useMemo(() => {
     if (reportData.length === 0) return [];
-    
+
     const normalizeBarcode = (barcode) => {
       if (!barcode) return '';
       return String(barcode).trim().toUpperCase();
     };
-    
+
     const ticketMap = new Map();
     ticketData.forEach(ticket => {
       const barcode = normalizeBarcode(ticket['Barcode']);
@@ -152,20 +187,20 @@ const RepairTrackerSheet = () => {
       const reportBarcode = normalizeBarcode(report['Barcode#']);
       const ticket = ticketMap.get(reportBarcode) || {};
       const ticketNotes = ticket['Notes'] || '';
-      
+
       // Look up PM based on category
       const category = (report['Category'] || '').trim().toUpperCase();
       const mappingInfo = categoryToPM.get(category);
       const assignedPM = mappingInfo ? mappingInfo.pm : '';
-      
+
       // Track if category is unmatched
       if (category && !assignedPM) {
         unmatchedSet.add(report['Category'] || '');
       }
-      
+
       return {
         'Meeting Note': '',
-        'Requires Follow Up': '',
+        'Requires Follow Up': false, // default boolean now
         'Assigned To': assignedPM,
         'Location': report['Repair Location'] || ticket['Location'] || '',
         'Repair Ticket': report['Ticket'] || '',
@@ -190,36 +225,38 @@ const RepairTrackerSheet = () => {
         '_TicketMatched': Object.keys(ticket).length > 0 ? 'Yes' : 'No'
       };
     });
-    
+
     // Update unmatched categories
     setUnmatchedCategories(Array.from(unmatchedSet).sort());
-    
+
     return result;
   }, [ticketData, reportData, categoryMapping]);
 
   const [editedCombinedData, setEditedCombinedData] = useState([]);
-  
+
   useEffect(() => {
     const loadNotesFromFirebase = async () => {
       if (combinedData.length === 0) return;
-      
+
       try {
         const updatedData = [...combinedData];
-        
+
         for (let i = 0; i < updatedData.length; i++) {
           const barcode = updatedData[i]['Barcode#'];
           if (!barcode) continue;
-          
+
           const docRef = doc(db, 'repairNotes', barcode);
           const docSnap = await getDoc(docRef);
-          
+
           if (docSnap.exists()) {
             const data = docSnap.data();
-            updatedData[i]['Meeting Note'] = data.meetingNote || '';
-            updatedData[i]['Requires Follow Up'] = data.requiresFollowUp || '';
+            updatedData[i]['Meeting Note'] = data.meetingNote ?? '';
+            // Accept boolean or string, normalize to boolean internally
+            const rf = data.requiresFollowUp;
+            updatedData[i]['Requires Follow Up'] = typeof rf === 'boolean' ? rf : !!rf;
           }
         }
-        
+
         setEditedCombinedData(updatedData);
         console.log('Loaded notes from Firebase');
       } catch (error) {
@@ -227,21 +264,21 @@ const RepairTrackerSheet = () => {
         setEditedCombinedData(combinedData);
       }
     };
-    
+
     loadNotesFromFirebase();
   }, [combinedData]);
 
+  /** Key-based updater: target rows by Barcode# */
   const handleCellEdit = (rowKey, column, value) => {
-  setEditedCombinedData(prevData => {
-    const idx = prevData.findIndex(r => r['Barcode#'] === rowKey);
-    if (idx === -1) return prevData;
-    const updated = [...prevData];
-    updated[idx] = { ...updated[idx], [column]: value };
-    return updated;
-  });
-  setHasUnsavedChanges(true);
-};
-
+    setEditedCombinedData(prevData => {
+      const idx = prevData.findIndex(r => r['Barcode#'] === rowKey);
+      if (idx === -1) return prevData;
+      const updated = [...prevData];
+      updated[idx] = { ...updated[idx], [column]: value };
+      return updated;
+    });
+    setHasUnsavedChanges(true);
+  };
 
   const saveNotesToFirebase = async () => {
     setSaving(true);
@@ -249,21 +286,21 @@ const RepairTrackerSheet = () => {
       const savePromises = editedCombinedData.map(async (row) => {
         const barcode = row['Barcode#'];
         if (!barcode) return;
-        
+
         const docRef = doc(db, 'repairNotes', barcode);
-        
+
         try {
           await setDoc(docRef, {
             barcode: barcode,
             meetingNote: row['Meeting Note'] || '',
-            requiresFollowUp: row['Requires Follow Up'] || '',
+            requiresFollowUp: !!row['Requires Follow Up'], // save as boolean
             lastUpdated: new Date().toISOString()
           }, { merge: true });
         } catch (error) {
           console.error(`Error saving note for ${barcode}:`, error);
         }
       });
-      
+
       await Promise.all(savePromises);
       setLastSaved(new Date());
       setHasUnsavedChanges(false);
@@ -276,11 +313,14 @@ const RepairTrackerSheet = () => {
     }
   };
 
+  /** Use deferred value to smooth typing vs. heavy recomputes */
+  const deferredCombined = useDeferredValue(editedCombinedData);
+
   const getCurrentData = () => {
     switch (activeTab) {
       case 'tickets': return ticketData;
       case 'reports': return reportData;
-      case 'combined': return editedCombinedData;
+      case 'combined': return deferredCombined; // use deferred dataset
       case 'diagnostics': return [];
       default: return [];
     }
@@ -325,16 +365,16 @@ const RepairTrackerSheet = () => {
         };
       }
       workload[pm].count++;
-      
+
       const cost = parseFloat(row['Repair Cost']) || 0;
       workload[pm].totalCost += cost;
-      
+
       const age = parseInt(row['Asset Repair Age']) || 0;
       if (age > 0) {
         workload[pm].ages.push(age);
       }
     });
-    
+
     // Calculate average ages
     Object.keys(workload).forEach(pm => {
       if (workload[pm].ages.length > 0) {
@@ -342,7 +382,7 @@ const RepairTrackerSheet = () => {
         workload[pm].avgAge = Math.round(sum / workload[pm].ages.length);
       }
     });
-    
+
     return workload;
   }, [editedCombinedData]);
 
@@ -363,29 +403,29 @@ const RepairTrackerSheet = () => {
     const existingIndex = newMapping.findIndex(
       m => m.category.trim().toUpperCase() === category.trim().toUpperCase()
     );
-    
+
     if (existingIndex >= 0) {
-      newMapping[existingIndex] = { 
-        category: category.trim(), 
+      newMapping[existingIndex] = {
+        category: category.trim(),
         pm: pm.trim(),
         department: department.trim(),
         category_text: categoryText.trim()
       };
     } else {
-      newMapping.push({ 
-        category: category.trim(), 
+      newMapping.push({
+        category: category.trim(),
         pm: pm.trim(),
         department: department.trim(),
         category_text: categoryText.trim()
       });
     }
-    
+
     setCategoryMapping(newMapping);
     setHasUnsavedChanges(true);
   };
 
   const removeCategoryMapping = (category) => {
-    setCategoryMapping(prev => 
+    setCategoryMapping(prev =>
       prev.filter(m => m.category.trim().toUpperCase() !== category.trim().toUpperCase())
     );
     setHasUnsavedChanges(true);
@@ -404,14 +444,14 @@ const RepairTrackerSheet = () => {
 
   const filteredAndSortedData = useMemo(() => {
     let filtered = currentData;
-    
+
     if (locationFilter) {
       filtered = filtered.filter(row => {
         const location = row['Location'] || row['Repair Location'];
         return location === locationFilter;
       });
     }
-    
+
     if (pmFilter) {
       filtered = filtered.filter(row => {
         if (pmFilter === '__unassigned__') {
@@ -420,7 +460,7 @@ const RepairTrackerSheet = () => {
         return row['Assigned To'] === pmFilter;
       });
     }
-    
+
     if (searchTerm) {
       filtered = filtered.filter(row =>
         Object.values(row).some(val =>
@@ -430,7 +470,7 @@ const RepairTrackerSheet = () => {
     }
 
     if (sortConfig.key) {
-      filtered.sort((a, b) => {
+      filtered = [...filtered].sort((a, b) => {
         const aVal = a[sortConfig.key];
         const bVal = b[sortConfig.key];
         if (aVal === bVal) return 0;
@@ -452,7 +492,7 @@ const RepairTrackerSheet = () => {
   const formatCell = (value) => {
     if (!value && value !== 0) return '';
     const str = String(value);
-    
+
     if (str.includes('T') && str.includes('Z')) {
       try {
         const date = new Date(str);
@@ -461,7 +501,7 @@ const RepairTrackerSheet = () => {
         }
       } catch {}
     }
-    
+
     const num = parseFloat(str.replace(/,/g, ''));
     if (!isNaN(num) && str.match(/^[\d,\.]+$/)) {
       if (num === Math.floor(num)) {
@@ -469,7 +509,7 @@ const RepairTrackerSheet = () => {
       }
       return num.toString();
     }
-    
+
     return str;
   };
 
@@ -478,12 +518,13 @@ const RepairTrackerSheet = () => {
     const rows = filteredAndSortedData.map(row =>
       columns.map(col => {
         const value = row[col];
-        const formattedValue = formatCell(value);
+        const formattedValue =
+          col === 'Requires Follow Up' ? (value ? 'Yes' : 'No') : formatCell(value);
         return `"${String(formattedValue || '').replace(/"/g, '""')}"`;
       }).join(',')
     );
     const csv = [headers, ...rows].join('\n');
-    
+
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -500,7 +541,7 @@ const RepairTrackerSheet = () => {
     const [newPM, setNewPM] = useState('');
     const [newDepartment, setNewDepartment] = useState('');
     const [newCategoryText, setNewCategoryText] = useState('');
-    
+
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
@@ -513,7 +554,7 @@ const RepairTrackerSheet = () => {
               ×
             </button>
           </div>
-          
+
           <div className="p-6 space-y-6 overflow-y-auto flex-1">
             {/* Add New Mapping */}
             <div className="bg-blue-50 p-4 rounded-lg">
@@ -670,7 +711,7 @@ const RepairTrackerSheet = () => {
             <h1 className="text-2xl font-bold text-gray-800">Repair Tracker Dashboard</h1>
             <p className="text-sm text-gray-500 mt-1">Manage repair tickets and reports</p>
           </div>
-          
+
           <div className="flex gap-2 items-center">
             {lastSaved && (
               <span className="text-xs text-gray-500 flex items-center gap-1">
@@ -692,7 +733,7 @@ const RepairTrackerSheet = () => {
                 )}
               </button>
             )}
-            
+
             {activeTab === 'combined' && editedCombinedData.length > 0 && (
               <button
                 onClick={saveNotesToFirebase}
@@ -705,7 +746,7 @@ const RepairTrackerSheet = () => {
                 {saving ? 'Saving...' : hasUnsavedChanges ? 'Save Changes' : 'Save Notes'}
               </button>
             )}
-            
+
             <label className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 cursor-pointer transition-colors text-sm">
               <Upload size={16} />
               Upload Category JSON
@@ -717,7 +758,7 @@ const RepairTrackerSheet = () => {
                 disabled={loading}
               />
             </label>
-            
+
             <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-sm">
               <Upload size={16} />
               {ticketData.length > 0 ? 'Reload' : 'Upload'} Ticket List
@@ -811,7 +852,7 @@ const RepairTrackerSheet = () => {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-            
+
             <div className="flex items-center gap-2 ml-4">
               <select
                 value={locationFilter}
@@ -825,7 +866,7 @@ const RepairTrackerSheet = () => {
                   </option>
                 ))}
               </select>
-              
+
               {locationFilter && (
                 <button
                   onClick={() => setLocationFilter('')}
@@ -834,7 +875,7 @@ const RepairTrackerSheet = () => {
                   Clear
                 </button>
               )}
-              
+
               {activeTab === 'combined' && (
                 <>
                   <select
@@ -850,7 +891,7 @@ const RepairTrackerSheet = () => {
                       </option>
                     ))}
                   </select>
-                  
+
                   {pmFilter && (
                     <button
                       onClick={() => setPmFilter('')}
@@ -862,19 +903,19 @@ const RepairTrackerSheet = () => {
                 </>
               )}
             </div>
-            
+
             <div className="flex items-center gap-2 ml-4">
               <button
                 onClick={() => setWrapText(!wrapText)}
                 className={`px-4 py-2 border rounded-lg transition-colors text-sm ${
-                  wrapText 
-                    ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' 
+                  wrapText
+                    ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
                     : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                 }`}
               >
                 {wrapText ? 'Unwrap' : 'Wrap'} Text
               </button>
-              
+
               <button
                 onClick={exportToCSV}
                 disabled={currentData.length === 0}
@@ -885,7 +926,7 @@ const RepairTrackerSheet = () => {
               </button>
             </div>
           </div>
-          
+
           {activeTab === 'combined' && (
             <div className="flex items-center gap-4 text-xs text-gray-500">
               <span>
@@ -927,20 +968,20 @@ const RepairTrackerSheet = () => {
           <div className="max-w-6xl mx-auto space-y-6 overflow-y-auto h-full pb-8">
             <div className="bg-white p-6 rounded-lg shadow">
               <h2 className="text-xl font-semibold text-gray-800 mb-4">Data Matching Diagnostics</h2>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div className="p-4 bg-blue-50 rounded-lg">
                   <h3 className="font-semibold text-blue-900 mb-2">📋 Repair Ticket List</h3>
                   <p className="text-2xl font-bold text-blue-800">{ticketData.length}</p>
                   <p className="text-sm text-blue-700">records</p>
                 </div>
-                
+
                 <div className="p-4 bg-green-50 rounded-lg">
                   <h3 className="font-semibold text-green-900 mb-2">🔧 Repair Report</h3>
                   <p className="text-2xl font-bold text-green-800">{reportData.length}</p>
                   <p className="text-sm text-green-700">records</p>
                 </div>
-                
+
                 <div className="p-4 bg-purple-50 rounded-lg">
                   <h3 className="font-semibold text-purple-900 mb-2">📚 Category Mappings</h3>
                   <p className="text-2xl font-bold text-purple-800">{categoryMapping.length}</p>
@@ -969,7 +1010,7 @@ const RepairTrackerSheet = () => {
                   <div>
                     <p className="text-sm text-gray-600">Coverage</p>
                     <p className="text-xl font-bold text-blue-600">
-                      {allCategories.length > 0 
+                      {allCategories.length > 0
                         ? Math.round(((allCategories.length - unmatchedCategories.length) / allCategories.length) * 100)
                         : 0}%
                     </p>
@@ -1112,44 +1153,42 @@ const RepairTrackerSheet = () => {
                 {filteredAndSortedData.map((row, idx) => {
                   const hasAssignment = row['Assigned To'] && row['Assigned To'] !== '';
                   const rowBgColor = activeTab === 'combined' && !hasAssignment ? 'bg-red-50' : '';
-                  
+
                   return (
-                    <tr key={idx} className={`hover:bg-gray-50 ${rowBgColor}`}>
+                    <tr key={row['Barcode#'] || idx} className={`hover:bg-gray-50 ${rowBgColor}`}>
                       {columns.map((col) => {
                         const isTextEditable = activeTab === 'combined' && (col === 'Meeting Note' || col === 'Requires Follow Up');
                         const isPMEditable = activeTab === 'combined' && col === 'Assigned To';
+                        const isRequires = activeTab === 'combined' && col === 'Requires Follow Up';
                         const cellValue = row[col];
                         const isEditing =
-  editingCell?.rowKey === row['Barcode#'] && editingCell?.column === col;
-                        
+                          editingCell?.rowKey === row['Barcode#'] && editingCell?.column === col;
+
                         return (
-                          <td 
-                            key={col} 
+                          <td
+                            key={col}
                             className={`px-4 py-3 text-sm text-gray-900 ${
                               wrapText ? 'whitespace-normal break-words' : 'whitespace-nowrap'
                             } ${(isTextEditable || isPMEditable) ? 'cursor-text' : ''}`}
                             style={wrapText ? { maxWidth: '300px' } : undefined}
                             onClick={() => {
-  if (isTextEditable || isPMEditable) {
-    setEditingCell({ rowKey: row['Barcode#'], column: col });
-  }
-}}
-
+                              if (isTextEditable || isPMEditable) {
+                                setEditingCell({ rowKey: row['Barcode#'], column: col });
+                              }
+                            }}
                           >
                             {isPMEditable && isEditing ? (
                               <select
-  autoFocus
-  value={cellValue}
-  onChange={(e) => handleCellEdit(row['Barcode#'], col, e.target.value)}
-  onBlur={() => setEditingCell(null)}
-  className="w-full p-2 border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
->
-  <option value="">-- Unassigned --</option>
-  {uniquePMs.map(pm => (
-    <option key={pm} value={pm}>{pm}</option>
-  ))}
-
-
+                                autoFocus
+                                value={cellValue}
+                                onChange={(e) => handleCellEdit(row['Barcode#'], col, e.target.value)}
+                                onBlur={() => setEditingCell(null)}
+                                className="w-full p-2 border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="">-- Unassigned --</option>
+                                {uniquePMs.map(pm => (
+                                  <option key={pm} value={pm}>{pm}</option>
+                                ))}
                               </select>
                             ) : isPMEditable ? (
                               <div className={`min-h-[40px] p-2 border border-transparent hover:border-gray-300 rounded flex items-center ${
@@ -1157,21 +1196,35 @@ const RepairTrackerSheet = () => {
                               }`}>
                                 {cellValue || '🔴 Click to assign'}
                               </div>
+                            ) : isRequires && isEditing ? (
+                              <input
+                                autoFocus
+                                type="checkbox"
+                                checked={!!cellValue}
+                                onChange={(e) => handleCellEdit(row['Barcode#'], col, e.target.checked)}
+                                onBlur={() => setEditingCell(null)}
+                                className="h-4 w-4"
+                              />
+                            ) : isRequires ? (
+                              <div
+                                className="min-h-[40px] p-2 border border-transparent hover:border-gray-300 rounded flex items-center cursor-pointer select-none"
+                                onClick={() => setEditingCell({ rowKey: row['Barcode#'], column: col })}
+                              >
+                                {cellValue ? '✅ Yes' : '⬜ No'}
+                              </div>
                             ) : isTextEditable && isEditing ? (
-                              <textarea
-  autoFocus
-  value={cellValue}
-  onChange={(e) => handleCellEdit(row['Barcode#'], col, e.target.value)}
-  onBlur={() => setEditingCell(null)}
-  className="w-full min-h-[60px] p-2 border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
-  style={{ minWidth: '200px' }}
-  onKeyDown={(e) => {
-    if (e.key === 'Escape') setEditingCell(null);
-  }}
-/>
-
+                              <TextCell
+                                rowKey={row['Barcode#']}
+                                column={col}
+                                initialValue={cellValue}
+                                onCommit={(rk, c, v) => {
+                                  handleCellEdit(rk, c, v);
+                                  setEditingCell(null);
+                                }}
+                                onCancel={() => setEditingCell(null)}
+                              />
                             ) : isTextEditable ? (
-                              <div 
+                              <div
                                 className={`min-h-[40px] p-2 border border-transparent hover:border-gray-300 rounded whitespace-pre-wrap ${
                                   !cellValue ? 'text-gray-400 italic' : ''
                                 }`}
@@ -1179,7 +1232,9 @@ const RepairTrackerSheet = () => {
                                 {cellValue || 'Click to add note...'}
                               </div>
                             ) : (
-                              formatCell(cellValue)
+                              col === 'Requires Follow Up'
+                                ? (cellValue ? 'Yes' : 'No')
+                                : formatCell(cellValue)
                             )}
                           </td>
                         );
@@ -1213,7 +1268,7 @@ const RepairTrackerSheet = () => {
           </div>
         </div>
       )}
-      
+
       {showCategoryManager && <CategoryManager />}
     </div>
   );

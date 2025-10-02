@@ -1,0 +1,2804 @@
+[
+  {
+    "department": "30MONITORS",
+    "category_text": "4K monitors over 30\"",
+    "category": "4KMON30",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "30MONITORS",
+    "category_text": "4K monitors under 30\"",
+    "category": "4KMON30",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "30MONITORS",
+    "category_text": "Monitor stands & Pedistals,30",
+    "category": "MONSTD30",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "30MONITORS",
+    "category_text": "Monitors with tuners, 30\"",
+    "category": "TELEVISION",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "30MONITORS",
+    "category_text": "Monitors with tuners, 30\"",
+    "category": "TOUCHSC30",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "40MONITORS",
+    "category_text": "4K monitors over 40\"",
+    "category": "4KMON40",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "40MONITORS",
+    "category_text": "4K monitor with tuner over 40\"",
+    "category": "4KTV40",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "40MONITORS",
+    "category_text": "Monitor without tuner over 40\"",
+    "category": "HDMON40",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "40MONITORS",
+    "category_text": "Monitor Stands & Pedestals 40\"",
+    "category": "MONSTD40",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "40MONITORS",
+    "category_text": "Seamless Monitors",
+    "category": "SEAMLESS",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "40MONITORS",
+    "category_text": "Touchscreen monitors, 40\"",
+    "category": "TCH40",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "40MONITORS",
+    "category_text": "Touchscreen overlays 40\"",
+    "category": "TCHOVER40",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "40MONITORS",
+    "category_text": "Monitors with tuner over 40\"",
+    "category": "TELE40",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "50MONITORS",
+    "category_text": "4K monitors over 50\"",
+    "category": "4KMON50",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "50MONITORS",
+    "category_text": "4K monitor with tuner over 50\"",
+    "category": "4KTV50",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "50MONITORS",
+    "category_text": "Monitor without tuner,  50\"",
+    "category": "HDMON50",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "50MONITORS",
+    "category_text": "Monitor Stands & Pedestals 50\"",
+    "category": "MONSTD50",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "50MONITORS",
+    "category_text": "Monitors with tuner, 50\"",
+    "category": "TELE50",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "50MONITORS",
+    "category_text": "Touchscreen monitors, 50\"",
+    "category": "TOUCH50",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "60MONITORS",
+    "category_text": "4K monitors over 60\"",
+    "category": "4KMON60",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "60MONITORS",
+    "category_text": "Monitor Stand & Pedestal, 60\"",
+    "category": "MONSTD60",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "60MONITORS",
+    "category_text": "Touchscreen overlays, 60\"",
+    "category": "TCHOVER60",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "60MONITORS",
+    "category_text": "Monitors with tuners, 60\"",
+    "category": "TELE60",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "60MONITORS",
+    "category_text": "Touchscreen monitors , 60\"",
+    "category": "TOUCH60",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "70MONITORS",
+    "category_text": "4K monitors over 70\"",
+    "category": "4KMON70",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "70MONITORS",
+    "category_text": "4K monitor with tuner over 70\"",
+    "category": "4KTV70",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "70MONITORS",
+    "category_text": "Monitor Stand & Pedestal, 70\"",
+    "category": "MONSTD70",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "70MONITORS",
+    "category_text": "Touchscreen monitors, 70\"",
+    "category": "TCH70",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "70MONITORS",
+    "category_text": "Monitors with tuners, 70\"",
+    "category": "TELE70",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "80MONITORS",
+    "category_text": "4K monitors over 80\"",
+    "category": "4KMON80",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "80MONITORS",
+    "category_text": "4K monitor with tuner over 80\"",
+    "category": "4KTV80",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "80MONITORS",
+    "category_text": "Monitors for digital signage",
+    "category": "DIGSIGNAGE",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "80MONITORS",
+    "category_text": "Monitors without tuner, 80\"",
+    "category": "HDMON80",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "80MONITORS",
+    "category_text": "Misc monitor acc, 80\"",
+    "category": "MONMIS80",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "80MONITORS",
+    "category_text": "Monitor Stand & Pedestal 80\"",
+    "category": "MONSTD80",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "80MONITORS",
+    "category_text": "Touchscreen monitors, 80\"",
+    "category": "TCH80",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "80MONITORS",
+    "category_text": "Monitors with tuners, 80\"",
+    "category": "TELE80",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "90MONITORS",
+    "category_text": "4K monitors over 90\"",
+    "category": "4KMON90",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "90MONITORS",
+    "category_text": "Monitors without tuner, 90\"",
+    "category": "HDMON90",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "90MONITORS",
+    "category_text": "Misc monitor acc, 90\"",
+    "category": "MONMIS90",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "90MONITORS",
+    "category_text": "Monitor Stand & Pedestal,90\"",
+    "category": "MONSTD90",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "90MONITORS",
+    "category_text": "Touchscreen monitors, 90\"",
+    "category": "TCH90",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "90MONITORS",
+    "category_text": "Monitors with tuner, 90\"",
+    "category": "TELE90",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "AMP",
+    "category_text": "Two Channel Amplifier",
+    "category": "2CHANNEL",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AMP",
+    "category_text": "Eight Channel Amplifier",
+    "category": "8CHANNEL",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "ANALOGVID",
+    "category_text": "Analog signal extenders",
+    "category": "ALDEXTEND",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "ANALOGVID",
+    "category_text": "Analog signal distribution",
+    "category": "ALGDIST",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "ANALOGVID",
+    "category_text": "Analog switchers",
+    "category": "ALGSWITCH",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "APPLECOMP",
+    "category_text": "Apple MacBook Pro laptops",
+    "category": "APPLEMBP",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "APPLECOMP",
+    "category_text": "Apple Tablets",
+    "category": "APPLETABLE",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "APPLECOMP",
+    "category_text": "Apple TV",
+    "category": "APPLETV",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "APPLECOMP",
+    "category_text": "Apple iMac desktops",
+    "category": "IMAC",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "APPLECOMP",
+    "category_text": "Apple Mac Mini desktops",
+    "category": "MACMINI",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "AUDIOACC",
+    "category_text": "Antennas",
+    "category": "ANTENNA",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDIOACC",
+    "category_text": "Compressor",
+    "category": "COMPRESSOR",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDIOACC",
+    "category_text": "Distribution Amplifier",
+    "category": "DA",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDIOACC",
+    "category_text": "Direct Injection Box",
+    "category": "DIBOX",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDIOACC",
+    "category_text": "Audio Equalizer",
+    "category": "EQ",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDIOACC",
+    "category_text": "Extension Handle",
+    "category": "EXHANDLE",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDIOACC",
+    "category_text": "Headphones",
+    "category": "HEADPHONES",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDIOACC",
+    "category_text": "Hum Eliminator",
+    "category": "HUMELM",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDIOACC",
+    "category_text": "Interface, Audio to USB",
+    "category": "INTERFACE",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDIOACC",
+    "category_text": "Phantom Power Blocker",
+    "category": "PHPWRBLK",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDIOACC",
+    "category_text": "In-Line Preamplifier",
+    "category": "PREAMP",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDIOACC",
+    "category_text": "PSUs, Batteries and Chargers",
+    "category": "PWRBATCHGR",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDIOACC",
+    "category_text": "Rack Components",
+    "category": "RACKCOMP",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDIOCBL",
+    "category_text": "Audio cables and adapters",
+    "category": "AUDCBLADPT",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDIOPERIF",
+    "category_text": "Press Bridge",
+    "category": "PRESSBRDGE",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDIOPERIF",
+    "category_text": "Recorder and Player",
+    "category": "RECPLAY",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDIOSNAKE",
+    "category_text": "16 Channel Audio Snakes",
+    "category": "16CHSNAKE",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDIOSNAKE",
+    "category_text": "32 Channel Audio Snakes",
+    "category": "32CHSNAKE",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDIOSNAKE",
+    "category_text": "8 Channel Audio Snake",
+    "category": "8CHSNAKE",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDIOSNAKE",
+    "category_text": "Ethercon snakes",
+    "category": "ECONSNAKE",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDMOUNT",
+    "category_text": "Fly Hardware",
+    "category": "FLYWARE",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDMOUNT",
+    "category_text": "Microphone Mounts",
+    "category": "MICMOUNT",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDMOUNT",
+    "category_text": "Speaker Mounts and Yokes",
+    "category": "SPKRMOUNT",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDSTAND",
+    "category_text": "Boom pole and accessories",
+    "category": "BOOMPOLE",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDSTAND",
+    "category_text": "Microphone Stands",
+    "category": "MICSTAND",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "AUDSTAND",
+    "category_text": "Speaker Stands",
+    "category": "SPKRSTAND",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Absen M2.9, accessory package",
+    "category": "ABSENACC",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Clickshare",
+    "category": "BARCLKKIT",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Clickshare",
+    "category": "BARCLKKIT2",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Shortcut codes for Borderless",
+    "category": "BORDERLESS",
+    "pm": "Ian Fisher"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Clear-Com FreeSpeak",
+    "category": "CCFSPEAKII",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Comm Systems",
+    "category": "COMSYSTEMS",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Dsan package case",
+    "category": "DSANPKG",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Ikan Promter System",
+    "category": "IKANSYS",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "IT and Networking Kits",
+    "category": "ITNETPKG",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Shortcut booking code",
+    "category": "LEDM294X",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "M29 shortcut x8",
+    "category": "LEDM298X",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Lilitab Kits",
+    "category": "LILITABKT",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Assisted Listening System",
+    "category": "LSTNPKG",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Lighting Tree - 10\"",
+    "category": "LTGGRNDRIG",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Meyer Speakers",
+    "category": "MEYERSPEAK",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Microphone Systems",
+    "category": "MICSYSTEMS",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Monitor mounts and stand kits",
+    "category": "MONSTDKIT",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Power related booking kits",
+    "category": "POWERKIT",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Presenter packages",
+    "category": "PRESNTRPKG",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Truss towers and accessories",
+    "category": "RIGGING",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "ROE, BP2 accessory, package",
+    "category": "ROEACC",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Scaffold packages",
+    "category": "SCAFFPKG",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Shortcut codes for 16:9 Aspect",
+    "category": "SCR16X9",
+    "pm": "Ian Fisher"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Shortcut codes for 3:1 + A/R",
+    "category": "SCR3X1GR",
+    "pm": "Ian Fisher"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Shortuct codes for 4:3 Aspect",
+    "category": "SCR4X3",
+    "pm": "Ian Fisher"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Shortcut codes for screen legs",
+    "category": "SCRLEGS",
+    "pm": "Ian Fisher"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Streaming packages",
+    "category": "STREAMPKG",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Arri SoftBank D2 Package",
+    "category": "STUDIOKIT",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Tech Drape Package",
+    "category": "TECHDPKG",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Telescript laptop package",
+    "category": "TELESLPT",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Telepromter Systems",
+    "category": "TELESYS",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Video Switching Packages",
+    "category": "VIDSWPKG",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Video Transmit/Receive kits",
+    "category": "VIDTXRXPKG",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "Vivitar LED Light Kit",
+    "category": "VIVRL10KIT",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "BOOKINGKIT",
+    "category_text": "VRX Systems",
+    "category": "VRXSYSTEMS",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "CABLEHYBRD",
+    "category_text": "EN3 Cables",
+    "category": "EN3",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "CABLEHYBRD",
+    "category_text": "Specialty cables for video",
+    "category": "SPECIALTY",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CABLEHYBRD",
+    "category_text": "PowerCon and XLR Cables",
+    "category": "UMBILICAL",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "CAMCORDER",
+    "category_text": "4K Camcorder",
+    "category": "CAMC4K",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CAMCORDER",
+    "category_text": "Camcorder Addition",
+    "category": "CAMCADD",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CAMCORDER",
+    "category_text": "ENG Camcorder",
+    "category": "CAMCENG",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CAMCORDER",
+    "category_text": "HD Camcorder",
+    "category": "CAMCHD",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CAMCORDER",
+    "category_text": "Camcorder Kit Component",
+    "category": "CAMCKIT",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CAMERALENS",
+    "category_text": "Lens 36x to 42x",
+    "category": "LENS3642",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CAMERALENS",
+    "category_text": "55x to 66x HD Lens",
+    "category": "LENS5566HD",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CAMERALENS",
+    "category_text": "SD 55x Lens",
+    "category": "LENS55SD",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CAMERALENS",
+    "category_text": "77x to 95x  HD Lens",
+    "category": "LENS7795HD",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CAMERALENS",
+    "category_text": "Lens Accessory",
+    "category": "LENSACC",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CAMERALENS",
+    "category_text": "UHD  Lens",
+    "category": "LENSUHD",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CAMERALENS",
+    "category_text": "Wide-Angle Lens",
+    "category": "LENSWA",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CAMSTUDIO",
+    "category_text": "4K Studio Camera",
+    "category": "STU4K",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CAMSTUDIO",
+    "category_text": "Studio Camera Addition",
+    "category": "STUADD",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CAMSTUDIO",
+    "category_text": "HD Studio Camera",
+    "category": "STUHD",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CAMSTUDIO",
+    "category_text": "Studio Camera Kit Component",
+    "category": "STUKIT",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CAMSTUDIO",
+    "category_text": "SD Studio Camera",
+    "category": "STUSD",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CAMSTUDIO",
+    "category_text": "Studio SD Camera Kit Component",
+    "category": "STUSDKIT",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CAMSUPPORT",
+    "category_text": "Camera Platform",
+    "category": "PLATFORM",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CAMSUPPORT",
+    "category_text": "Tripod Addition",
+    "category": "TPDADD",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CAMSUPPORT",
+    "category_text": "Tripod Component",
+    "category": "TPDKIT",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CAMSUPPORT",
+    "category_text": "Lightweight Tripod",
+    "category": "TPDLW",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CAMSUPPORT",
+    "category_text": "Loose Tripod - 15 to 50 lb cap",
+    "category": "TRP15-50",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CART",
+    "category_text": "General AV products",
+    "category": "GENAV",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Audio cases",
+    "category": "AUDIOCASES",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Audio rack cases",
+    "category": "AUDIORACK",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Clickshare",
+    "category": "BARCLKCASE",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Benson style cases",
+    "category": "BENSON",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Cable trunks",
+    "category": "CABTRUNK",
+    "pm": "NA"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Camera and acc cases",
+    "category": "CAMCASES",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Misc cases",
+    "category": "CAMISC",
+    "pm": "NA"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Camera lens cases",
+    "category": "CAMLNSCASE",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Camera support cases",
+    "category": "CAMSUPCASE",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Office equipment cases",
+    "category": "CAOFFCOMP",
+    "pm": "NA"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Computer cases",
+    "category": "COMPCASE",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Distro cases",
+    "category": "DISTROCASE",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "CASES",
+    "category_text": "General AV product cases",
+    "category": "GENAVCASE",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Lectern and podium case",
+    "category": "LECTERNS",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "CASES",
+    "category_text": "LED tile and accessory cases",
+    "category": "LEDCASE",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Lighting Cases",
+    "category": "LTGCASES",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Monitor cases",
+    "category": "MONITRCASE",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Nanuk cases",
+    "category": "NANUK",
+    "pm": "NA"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Pelican cases",
+    "category": "PELICAN",
+    "pm": "NA"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Projector accessory cases",
+    "category": "PJACC",
+    "pm": "Sergio Sandoval"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Projector cases",
+    "category": "PJCASE",
+    "pm": "Sergio Sandoval"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Projector lens cases",
+    "category": "PJLENSCASE",
+    "pm": "Sergio Sandoval"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Plasticase cases",
+    "category": "PLASTICASE",
+    "pm": "NA"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Rack Mount Shells for equip",
+    "category": "RACKSHELL",
+    "pm": "NA"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Screen cases",
+    "category": "SCREENCASE",
+    "pm": "Ian Fisher"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Case, SKB Marantz AVS",
+    "category": "SKB",
+    "pm": "NA"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Cable trunks",
+    "category": "TRUNKS",
+    "pm": "NA"
+  },
+  {
+    "department": "CASES",
+    "category_text": "Video equipment cases",
+    "category": "VIDEOCASE",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "COMMCABLE",
+    "category_text": "Analog communication cables",
+    "category": "ANALOGCOMM",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "COMMCABLE",
+    "category_text": "Antenna Cables",
+    "category": "ANTENNACAB",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "COMMCABLE",
+    "category_text": "Ethercon",
+    "category": "ETHERCON",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "COMMCABLE",
+    "category_text": "Cat5e and Ethercon Cables",
+    "category": "RJ45",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "Apple Accessories",
+    "category": "APPLEACC",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "Apple adapters",
+    "category": "APPLEADP",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "Apple keyboard & mouse",
+    "category": "APPLEKBM",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "Apple Power Supply",
+    "category": "APPLEPSU",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "Apple keyboard",
+    "category": "APPLKB",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "Apple mouse",
+    "category": "APPLMOUSE",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "Computer adapter",
+    "category": "COMPADP",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "Computer HeadSet",
+    "category": "COMPHSET",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "Computer Locks",
+    "category": "COMPLOCK",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "Computer Speaker",
+    "category": "COMPSPK",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "External Hard Drives",
+    "category": "EXTHDD",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "Internal Hard Drives",
+    "category": "INTHDD",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "Apple iPad Accessories",
+    "category": "IPADACC",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "keyboard & mouse",
+    "category": "KBM",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "KVM Switch",
+    "category": "KVM",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "Lilitab accessories",
+    "category": "LILIBLK",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "Lilitab accessories",
+    "category": "LILICSBLK",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "Lilitab accessories",
+    "category": "LILICSWHT",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "Lilitab accessories",
+    "category": "LILIPROWHT",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "Lilitab accessories",
+    "category": "LILIWHT",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "Computer Memory Moduals",
+    "category": "MEMORY",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "External Optical Drive",
+    "category": "OPTICAL",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "PC Computer Accessories",
+    "category": "PCACC",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "PC Power Supply",
+    "category": "PCPSU",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "Apple Tablet Power Supply",
+    "category": "TABLETPSU",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "Computer Webcam and lighting",
+    "category": "WEBCAM",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "COMPACC",
+    "category_text": "Wireless keyboard & mouse",
+    "category": "WKBM",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "COMPINT",
+    "category_text": "Employee Laptop",
+    "category": "EMPLAPTOP",
+    "pm": "NA"
+  },
+  {
+    "department": "COMPINT",
+    "category_text": "Internal Computers",
+    "category": "INTCOMP",
+    "pm": "NA"
+  },
+  {
+    "department": "COMPINT",
+    "category_text": "Internal Monitor and Accesory",
+    "category": "INTMONITOR",
+    "pm": "NA"
+  },
+  {
+    "department": "COMPINT",
+    "category_text": "Internal Peripherals",
+    "category": "INTPERIPH",
+    "pm": "NA"
+  },
+  {
+    "department": "COMPINT",
+    "category_text": "Internal Printers",
+    "category": "INTPRINTER",
+    "pm": "NA"
+  },
+  {
+    "department": "COMPINT",
+    "category_text": "Internal QC Tools",
+    "category": "INTQCTOOLS",
+    "pm": "NA"
+  },
+  {
+    "department": "COMPINT",
+    "category_text": "Internal Test",
+    "category": "INTTEST",
+    "pm": "NA"
+  },
+  {
+    "department": "COMPINT",
+    "category_text": "Internal Warehouse Equipment",
+    "category": "INTWHEQUIP",
+    "pm": "NA"
+  },
+  {
+    "department": "COMPINT",
+    "category_text": "#N/A",
+    "category": "LVPERIPH",
+    "pm": "NA"
+  },
+  {
+    "department": "COMPINT",
+    "category_text": "#N/A",
+    "category": "NYPRINTER",
+    "pm": "NA"
+  },
+  {
+    "department": "COMPINT",
+    "category_text": "#N/A",
+    "category": "ORLPERIPH",
+    "pm": "NA"
+  },
+  {
+    "department": "COMPINT",
+    "category_text": "PC Computer Accessories Int",
+    "category": "PCACCINT",
+    "pm": "NA"
+  },
+  {
+    "department": "COMPINT",
+    "category_text": "#N/A",
+    "category": "SFCOMPUTER",
+    "pm": "NA"
+  },
+  {
+    "department": "COMPINT",
+    "category_text": "#N/A",
+    "category": "SFMONITORS",
+    "pm": "NA"
+  },
+  {
+    "department": "COMPINT",
+    "category_text": "#N/A",
+    "category": "SFQCTOOLS",
+    "pm": "NA"
+  },
+  {
+    "department": "COMPINT",
+    "category_text": "Spare Parts for Repair or Disp",
+    "category": "SPAREPARTS",
+    "pm": "NA"
+  },
+  {
+    "department": "COMPINT",
+    "category_text": "Spare Screen Case",
+    "category": "SPARESCCA",
+    "pm": "NA"
+  },
+  {
+    "department": "COMPINT",
+    "category_text": "Spare Screen Parts",
+    "category": "SPARESCRNP",
+    "pm": "NA"
+  },
+  {
+    "department": "COMPINT",
+    "category_text": "#N/A",
+    "category": "WDCMONITOR",
+    "pm": "NA"
+  },
+  {
+    "department": "CONFERENCE",
+    "category_text": "Analog PBX or PSTN",
+    "category": "ANALOG",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "CONFERENCE",
+    "category_text": "Analog PBX or PSTN and VOIP",
+    "category": "ANLGVOIP",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "CONSOLE",
+    "category_text": "DMX Dimmer",
+    "category": "DIMMER",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "CONSOLE",
+    "category_text": "DMX controller",
+    "category": "DMXCNTLR",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "DRAPE",
+    "category_text": "Drape, skirts and sleeves.",
+    "category": "SKIRTS",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "DRAPE",
+    "category_text": "Tech drape and hardware",
+    "category": "TECHDRAPE",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "FITNESSHUB",
+    "category_text": "Richards equipment",
+    "category": "RICHARDF",
+    "pm": "NA"
+  },
+  {
+    "department": "FIXTURE",
+    "category_text": "Fixture accessories and cables",
+    "category": "FIXACCCBLS",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "FIXTURE",
+    "category_text": "LED Batten",
+    "category": "LEDBATTEN",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "FIXTURE",
+    "category_text": "LED Leko Spot Light",
+    "category": "LEDLEKO",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "FIXTURE",
+    "category_text": "LED Moving Head Fixtures",
+    "category": "LEDMOVERS",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "FIXTURE",
+    "category_text": "LED Par Light",
+    "category": "LEDPAR",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "FIXTURE",
+    "category_text": "Studio Lighting",
+    "category": "STULTG",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "FIXTURE",
+    "category_text": "Wireless LED Lighting",
+    "category": "WRLSLED",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "HARDWARE",
+    "category_text": "QC hardware - all departments",
+    "category": "QCHARDWARE",
+    "pm": "NA"
+  },
+  {
+    "department": "INTERCOM",
+    "category_text": "Intercom Headsets",
+    "category": "HEADSETCOM",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "INTERCOM",
+    "category_text": "IP Audio Comm",
+    "category": "IPAUDIO",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "INTERCOM",
+    "category_text": "Wired Intercom",
+    "category": "WIREDCOMM",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "INTERCOM",
+    "category_text": "Wireless Intercom",
+    "category": "WRLSCOMM",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "LECTERNS",
+    "category_text": "Lecterns and podiums",
+    "category": "LECTERN",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "LED",
+    "category_text": "Absen LED products",
+    "category": "ABSEN",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "LED",
+    "category_text": "Exovisual posters and acc",
+    "category": "EXOVISUAL",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "LED",
+    "category_text": "LED procecessors",
+    "category": "PROCESSORS",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "LED",
+    "category_text": "ROE LED products",
+    "category": "ROE",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "LED",
+    "category_text": "TRT LED posters and accessorie",
+    "category": "TRT",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "LICENSING",
+    "category_text": "Adobe Licensing",
+    "category": "ADOBE",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "LICENSING",
+    "category_text": "COMPUTER SOFTWARE MISC",
+    "category": "COMPSWMISC",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "LICENSING",
+    "category_text": "MAC Licensing",
+    "category": "MACLICENSE",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "LICENSING",
+    "category_text": "PC Licensing",
+    "category": "PCLICENCE",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "LIGHTACC",
+    "category_text": "Lighting Fixture Accessories",
+    "category": "FIXTUREACC",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "LIGHTACC",
+    "category_text": "Lighting  Cable and Accessory",
+    "category": "LTGCABLE",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "LIGHTACC",
+    "category_text": "Lighting Stands",
+    "category": "LTGSTANDS",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "LIGHTACC",
+    "category_text": "Studio Lighting Accessories",
+    "category": "STULTGACC",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "LIGHTACC",
+    "category_text": "Added by Importing Equipment",
+    "category": "WRLSCNTRLR",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "LSTNSYS",
+    "category_text": "Assisted Listening System",
+    "category": "ASLSYSTEM",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "LSTNSYS",
+    "category_text": "In Ear Monitor",
+    "category": "IEMSYSTEM",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "MICROPHONE",
+    "category_text": "Desktop Microphones and Bases",
+    "category": "DESKTOP",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "MICROPHONE",
+    "category_text": "Gooseneck Microphones",
+    "category": "GOOSENECK",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "MICROPHONE",
+    "category_text": "Handheld Microphones",
+    "category": "HANDHELD",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "MICROPHONE",
+    "category_text": "Headworn Microphones",
+    "category": "HEADSETMIC",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "MICROPHONE",
+    "category_text": "Instrument Microphones",
+    "category": "INSTRUMENT",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "MICROPHONE",
+    "category_text": "Lavalier Microphones",
+    "category": "LAVALIER",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "MICROPHONE",
+    "category_text": "Microphone Heads",
+    "category": "MICHEAD",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "MICROPHONE",
+    "category_text": "Shotgun Mics and accessories",
+    "category": "SHOTGUN",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "MICROPHONE",
+    "category_text": "USB Lav and Desktop mics",
+    "category": "USBMICS",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "MIXER",
+    "category_text": "Analog Mixing Console",
+    "category": "ANALOGMXR",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "MIXER",
+    "category_text": "Digital Mixing Console",
+    "category": "DIGITALMXR",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "MIXER",
+    "category_text": "Input/output Racks",
+    "category": "IORACKS",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "MIXER",
+    "category_text": "Microphone Mixer",
+    "category": "MICMIXER",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "MIXER",
+    "category_text": "Mixer Accessories",
+    "category": "MIXERACCS",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "MONITORACC",
+    "category_text": "3D Accessories",
+    "category": "3DACCES",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "MONITORACC",
+    "category_text": "Monitor Mounts",
+    "category": "MONITORMNT",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "MONITORACC",
+    "category_text": "Monitor Soundbars",
+    "category": "MONITORSBR",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "MONITORACC",
+    "category_text": "Monitor Stands & Pedestals",
+    "category": "MONITORSTD",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "MONITORACC",
+    "category_text": "Touchscreen Accessories",
+    "category": "TOUCHACC",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "MONITORACC",
+    "category_text": "Touchscreen overlays",
+    "category": "TOUCHOVER",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "MONITORREM",
+    "category_text": "Elo remotes",
+    "category": "ELO",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "MONITORREM",
+    "category_text": "LG Remotes",
+    "category": "LG",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "MONITORREM",
+    "category_text": "NEC remotes",
+    "category": "NEC",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "MONITORREM",
+    "category_text": "Panasonic remotes",
+    "category": "PANASOINC",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "MONITORREM",
+    "category_text": "Planar remotes",
+    "category": "PLANAR",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "MONITORREM",
+    "category_text": "Samsung remotes",
+    "category": "SAMSUNG",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "MONITORREM",
+    "category_text": "Sharp remotes",
+    "category": "SHARP",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "MONITORREM",
+    "category_text": "Sony remotes",
+    "category": "SONY",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "MONITORREM",
+    "category_text": "Universal monitor remotes",
+    "category": "UNIVERSAL",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "MONITORS",
+    "category_text": "4K monitors under 30\"",
+    "category": "4KMONITOR",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "MONITORS",
+    "category_text": "Monitors without tuners",
+    "category": "HDMONITOR",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "MONITORS",
+    "category_text": "Touchscreen monitors under 30",
+    "category": "TOUCHSCRN",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "NETWORK",
+    "category_text": "Network Management",
+    "category": "NETMGT",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "NETWORK",
+    "category_text": "Network cable",
+    "category": "NETWORKCBL",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "NETWORK",
+    "category_text": "PCI Network adapter",
+    "category": "PCINETADP",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "NETWORK",
+    "category_text": "PoE Network Switch",
+    "category": "POESWITCH",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "NETWORK",
+    "category_text": "Print Server",
+    "category": "PRINTSRV",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "NETWORK",
+    "category_text": "Network Router",
+    "category": "ROUTER",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "NETWORK",
+    "category_text": "Network Switch",
+    "category": "SWITCH",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "NETWORK",
+    "category_text": "USB Wireless Network adapter",
+    "category": "USBWIFIADP",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "NETWORK",
+    "category_text": "Wireless Access Point",
+    "category": "WAP",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "NETWORK",
+    "category_text": "Wireless Router",
+    "category": "WROUTER",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "PCCOMP",
+    "category_text": "Media Servers",
+    "category": "MEDIASRV",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "PCCOMP",
+    "category_text": "PC desktops",
+    "category": "PCDESKTOP",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "PCCOMP",
+    "category_text": "PC Laptops",
+    "category": "PCLAPTOP",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "PCCOMP",
+    "category_text": "PC Tablets",
+    "category": "PCTABLET",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "PJACCESS",
+    "category_text": "Projector Cage",
+    "category": "PJCAGE",
+    "pm": "Sergio Sandoval"
+  },
+  {
+    "department": "PJACCESS",
+    "category_text": "Projector input card",
+    "category": "PJINPUTCRD",
+    "pm": "Sergio Sandoval"
+  },
+  {
+    "department": "PJACCESS",
+    "category_text": "Projector Lamp",
+    "category": "PJLAMP",
+    "pm": "Sergio Sandoval"
+  },
+  {
+    "department": "PJACCESS",
+    "category_text": "Projector Mounts",
+    "category": "PJMOUNTS",
+    "pm": "Sergio Sandoval"
+  },
+  {
+    "department": "PJACCESS",
+    "category_text": "Projector Power",
+    "category": "PJPOWER",
+    "pm": "Sergio Sandoval"
+  },
+  {
+    "department": "PJACCESS",
+    "category_text": "Projector Remote",
+    "category": "PJREMOTE",
+    "pm": "Sergio Sandoval"
+  },
+  {
+    "department": "PJACCESS",
+    "category_text": "Projector Rigging",
+    "category": "PJRIGGING",
+    "pm": "Sergio Sandoval"
+  },
+  {
+    "department": "PJACCESS",
+    "category_text": "Projector Shroud",
+    "category": "PJSHROUD",
+    "pm": "Sergio Sandoval"
+  },
+  {
+    "department": "PJLENS",
+    "category_text": "Barco projector lenses",
+    "category": "BARCO",
+    "pm": "Sergio Sandoval"
+  },
+  {
+    "department": "PJLENS",
+    "category_text": "Christie projector lenses",
+    "category": "CHRISTIE",
+    "pm": "Sergio Sandoval"
+  },
+  {
+    "department": "PJLENS",
+    "category_text": "Eiki/Sanyo projector lenses",
+    "category": "EIKI",
+    "pm": "Sergio Sandoval"
+  },
+  {
+    "department": "PJLENS",
+    "category_text": "Panasonic projector lenses",
+    "category": "PANASONIC",
+    "pm": "Sergio Sandoval"
+  },
+  {
+    "department": "PJLENS",
+    "category_text": "Epson projector lenses",
+    "category": "EPSON",
+    "pm": "Sergio Sandoval"
+  },
+  {
+    "department": "PLYBCKREM",
+    "category_text": "Sony playback remotes",
+    "category": "SONYREMOTE",
+    "pm": "NA"
+  },
+  {
+    "department": "POV",
+    "category_text": "POV Addition",
+    "category": "POVADD",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "POV",
+    "category_text": "POV Camera",
+    "category": "POVCAM",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "POV",
+    "category_text": "POV Kit Component",
+    "category": "POVKIT",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "POWERCABLE",
+    "category_text": "Power connector adapters",
+    "category": "ADAPTER",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "POWERCABLE",
+    "category_text": "Cable accessories",
+    "category": "CABLEACC",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "POWERCABLE",
+    "category_text": "Camlock cables",
+    "category": "CAMLOCK",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "POWERCABLE",
+    "category_text": "Edison power cable",
+    "category": "EDISON",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "POWERCABLE",
+    "category_text": "L2130 cables",
+    "category": "L2130",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "POWERCABLE",
+    "category_text": "L6-30 Cables",
+    "category": "L630",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "POWERCABLE",
+    "category_text": "Powercon cables and adapters",
+    "category": "POWERCON",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "POWERCABLE",
+    "category_text": "Socapex cables",
+    "category": "SOCAPEX",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "POWERCABLE",
+    "category_text": "Stringer Cables",
+    "category": "STRINGER",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "POWERCABLE",
+    "category_text": "Bare end tails",
+    "category": "TAILS",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "POWERCABLE",
+    "category_text": "True1",
+    "category": "TRUE1",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "POWERDIST",
+    "category_text": "Power conditioning products",
+    "category": "CONDITION",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "POWERDIST",
+    "category_text": "Distros and break out products",
+    "category": "DISTRO",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "POWERDIST",
+    "category_text": "AC accessories",
+    "category": "POWERACC",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "POWERDIST",
+    "category_text": "Uninterrupted Power Supply",
+    "category": "UPS",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "PRESENTATI",
+    "category_text": "Clickshare",
+    "category": "BARCLKBSE",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "PRESENTATI",
+    "category_text": "Clickshare",
+    "category": "BARCLKBUTT",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "PRESENTATI",
+    "category_text": "Easels and Display Stands",
+    "category": "EASEL",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "PRESENTATI",
+    "category_text": "Flip charts and white boards",
+    "category": "FLIPCWHTB",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "PRESENTATI",
+    "category_text": "Timers, laser pointers, etc",
+    "category": "PRESENTER",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "PRINTER",
+    "category_text": "HP Color LaserJet Printer",
+    "category": "HPCLASERJE",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "PRINTER",
+    "category_text": "OfficeJet Printer. Rental",
+    "category": "HPOFCJET",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "PRINTER",
+    "category_text": "PRINTER ACCESSORIES",
+    "category": "PRINTACC",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "PRINTER",
+    "category_text": "Printer Toner Drum",
+    "category": "PRINTDRUM",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "PRINTER",
+    "category_text": "Printer Ink",
+    "category": "PRINTINK",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "PRINTER",
+    "category_text": "Printer Toner",
+    "category": "PRINTTONER",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "PRINTER",
+    "category_text": "Win 10, BW",
+    "category": "W10BW",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "PRINTER",
+    "category_text": "Windows 10, MFP, Color",
+    "category": "W10MC",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "PRINTER",
+    "category_text": "Win 10, Plug n Play, BW",
+    "category": "W10PPBW",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "PRINTER",
+    "category_text": "Windows 10, Plug n Play Color",
+    "category": "W10PPC",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "PRINTER",
+    "category_text": "Win 10, Plug n Play, MFP, BW",
+    "category": "W10PPMBW",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "PRINTER",
+    "category_text": "Win 10, Plug n Play, MFP, Col",
+    "category": "W10PPMC",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "PRINTER",
+    "category_text": "Win 7, BW",
+    "category": "W7BW",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "PRINTER",
+    "category_text": "Windows 7, Color",
+    "category": "W7C",
+    "pm": "Serhii Yefimenko"
+  },
+  {
+    "department": "PROJECTORS",
+    "category_text": "Projectors 13k through 25K",
+    "category": "13TO25K",
+    "pm": "Sergio Sandoval"
+  },
+  {
+    "department": "PROJECTORS",
+    "category_text": "Projectors 26k through 30K",
+    "category": "26TO30K",
+    "pm": "Sergio Sandoval"
+  },
+  {
+    "department": "PROJECTORS",
+    "category_text": "Projectors 31k through 40K",
+    "category": "31TO40K",
+    "pm": "Sergio Sandoval"
+  },
+  {
+    "department": "PROJECTORS",
+    "category_text": "Projectors 6k through 12k",
+    "category": "6KTO12K",
+    "pm": "Sergio Sandoval"
+  },
+  {
+    "department": "PROJECTORS",
+    "category_text": "Projectors under 6K",
+    "category": "UNDER6K",
+    "pm": "Sergio Sandoval"
+  },
+  {
+    "department": "PROMPTERS",
+    "category_text": "Ikan Prompter Componants",
+    "category": "IKAN",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "PROMPTERS",
+    "category_text": "Telescript Prompter Components",
+    "category": "TELESCRIPT",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "PTZ",
+    "category_text": "PTZ Addition",
+    "category": "PTZADD",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "PTZ",
+    "category_text": "PTZ Camera",
+    "category": "PTZCAM",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "PTZ",
+    "category_text": "PTZ controller",
+    "category": "PTZCTRL",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "PTZ",
+    "category_text": "PTZ Kit Component",
+    "category": "PTZKIT",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "PUSHTOTALK",
+    "category_text": "Wired Push To Talk Microphones",
+    "category": "WIREDPTT",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "PUSHTOTALK",
+    "category_text": "Wireless Push To Talk Mics",
+    "category": "WRLSPTT",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "QCTOOLS",
+    "category_text": "Audio QC Tools",
+    "category": "AUDIO",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "QCTOOLS",
+    "category_text": "Lighting QC Tools",
+    "category": "LIGHTING",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "QCTOOLS",
+    "category_text": "Video QC Tools",
+    "category": "VIDEOQC",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "RACKCASE",
+    "category_text": "Wireless & Audio Rack",
+    "category": "WLAUDRACK",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "RIGGING",
+    "category_text": "Rigging Clamps",
+    "category": "CLAMPS",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "RIGGING",
+    "category_text": "Rigging hardware",
+    "category": "HARDWARE",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "RIGGING",
+    "category_text": "Schedule 40 Pipe",
+    "category": "PIPE",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "RIGGING",
+    "category_text": "Sand Bags",
+    "category": "SANDBAGS",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "RIGGING",
+    "category_text": "SteelFlex Spansets",
+    "category": "SPANSET",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "RIGGING",
+    "category_text": "Rigging tools and accessory",
+    "category": "TOOLS",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "RIGGING",
+    "category_text": "Truss and truss accessories",
+    "category": "TRUSS",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "SCAFFOLD",
+    "category_text": "Scaffold parts",
+    "category": "SCAFF",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "SCREENPART",
+    "category_text": "Fullwhite parts",
+    "category": "FULLWHITEP",
+    "pm": "Ian Fisher"
+  },
+  {
+    "department": "SCREENPART",
+    "category_text": "Monoblox Dress parts",
+    "category": "MBDRESS",
+    "pm": "Ian Fisher"
+  },
+  {
+    "department": "SCREENPART",
+    "category_text": "Monoblox frame  parts",
+    "category": "MBFRAME",
+    "pm": "Ian Fisher"
+  },
+  {
+    "department": "SCREENPART",
+    "category_text": "Screen accessories that fall u",
+    "category": "SCRACC",
+    "pm": "Ian Fisher"
+  },
+  {
+    "department": "SCREENPART",
+    "category_text": "Ultimate Folding Dress parts",
+    "category": "UFSDRESS",
+    "pm": "Ian Fisher"
+  },
+  {
+    "department": "SCREENPART",
+    "category_text": "Ultimate Folding frame  parts",
+    "category": "UFSFRAME",
+    "pm": "Ian Fisher"
+  },
+  {
+    "department": "SCREENPART",
+    "category_text": "Vario Dress parts",
+    "category": "VARIODRESS",
+    "pm": "Ian Fisher"
+  },
+  {
+    "department": "SCREENPART",
+    "category_text": "Vario frame  parts",
+    "category": "VARIOFRAME",
+    "pm": "Ian Fisher"
+  },
+  {
+    "department": "SCREENS",
+    "category_text": "Fullwhite parts",
+    "category": "FULLWHITES",
+    "pm": "Ian Fisher"
+  },
+  {
+    "department": "SCREENS",
+    "category_text": "Lace and Grommet Screens",
+    "category": "GROMMET",
+    "pm": "Ian Fisher"
+  },
+  {
+    "department": "SCREENS",
+    "category_text": "Monoblox frame  parts",
+    "category": "MBSURFACE",
+    "pm": "Ian Fisher"
+  },
+  {
+    "department": "SCREENS",
+    "category_text": "Tripods and Roadwarriors",
+    "category": "TRIPOD",
+    "pm": "Ian Fisher"
+  },
+  {
+    "department": "SCREENS",
+    "category_text": "Ultimate Folding frame  parts",
+    "category": "UFSSURFACE",
+    "pm": "Ian Fisher"
+  },
+  {
+    "department": "SCREENS",
+    "category_text": "Vario frame  parts",
+    "category": "VARIOSURF",
+    "pm": "Ian Fisher"
+  },
+  {
+    "department": "SPEAKER",
+    "category_text": "Powered Line Array Speakers",
+    "category": "LINEARRAY",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "SPEAKER",
+    "category_text": "Powered Active Speakers",
+    "category": "POWERED",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "SPEAKER",
+    "category_text": "Unpowered Passive Speakers",
+    "category": "UNPOWERED",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "SWITCHERS",
+    "category_text": "General AV video products",
+    "category": "BASIC",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "SWITCHERS",
+    "category_text": "Broadcast ME Bus switchers",
+    "category": "BROADCAST",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "SWITCHERS",
+    "category_text": "High resolution switching",
+    "category": "HRSWITCH",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "SWITCHERS",
+    "category_text": "Multiformat switcher",
+    "category": "MULTIFRMT",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "SWITCHERS",
+    "category_text": "Switcher option cards",
+    "category": "OPTCARDS",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "SWITCHERS",
+    "category_text": "Video switcher accessories",
+    "category": "SWITCHACC",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "SWITCHERS",
+    "category_text": "Hybrid Switchers w/streaming",
+    "category": "HYBRIDSW",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDCABLE",
+    "category_text": "Displayport Adapters",
+    "category": "DPADPT",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDCABLE",
+    "category_text": "DisplayPort Cables",
+    "category": "DPCABLE",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDCABLE",
+    "category_text": "DVI cables and adapters",
+    "category": "DVICBLADPT",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDCABLE",
+    "category_text": "Fiberoptic cable",
+    "category": "FIBER",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDCABLE",
+    "category_text": "Fiber adapters and accessories",
+    "category": "FIBERADPT",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDCABLE",
+    "category_text": "SDI Copper cable",
+    "category": "HDSDVIDEO",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDCABLE",
+    "category_text": "Integrated TX/RX hybrid cables",
+    "category": "HYBRID",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDCABLE",
+    "category_text": "Cable Reel",
+    "category": "REEL",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDCABLE",
+    "category_text": "4K HDMI cables and adapters",
+    "category": "VID4KHDMI",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDCABLE",
+    "category_text": "Video cable composite",
+    "category": "VIDCBLCOMP",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDCABLE",
+    "category_text": "HDMI cables and adapters",
+    "category": "VIDEOHDMI",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDCABLE",
+    "category_text": "VGA cable and adapters",
+    "category": "VIDEOVGA",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDEO",
+    "category_text": "Signal converters",
+    "category": "CONVERTERS",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDEO",
+    "category_text": "Signal extenders",
+    "category": "EXTENDERS",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDEO",
+    "category_text": "Video playback",
+    "category": "PLAYBACK",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDEO",
+    "category_text": "Production and preview monitor",
+    "category": "PRODMON",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDEO",
+    "category_text": "Recording and streaming",
+    "category": "RCDSTRM",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDEO",
+    "category_text": "Routers and distribution",
+    "category": "ROUTDIST",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDEO",
+    "category_text": "Video Wireless",
+    "category": "VIDWIRELES",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDEOACC",
+    "category_text": "Video accessories",
+    "category": "VIDEOMISC",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDEOPRO",
+    "category_text": "Multiviewers",
+    "category": "MULTIVIEWE",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDEOPRO",
+    "category_text": "Opengear",
+    "category": "OPENGEAR",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDEOPRO",
+    "category_text": "Scalers and screen management",
+    "category": "SCALERS",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDEOPRO",
+    "category_text": "Video accessories",
+    "category": "VIDEOACC",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "VIDEOPRO",
+    "category_text": "Toolbox Problem Solvers and Ga",
+    "category": "VIDEOTBX",
+    "pm": "Greg Parker"
+  },
+  {
+    "department": "WIRELESSAD",
+    "category_text": "Antenna Distribution and Power",
+    "category": "ATTDISTPSU",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "WIRELESSAD",
+    "category_text": "FM transmitters",
+    "category": "FM",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "WIRELESSAD",
+    "category_text": "G Band Wireless Microphones",
+    "category": "GBAND",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "WIRELESSAD",
+    "category_text": "H Band Wireless Microphones",
+    "category": "HBAND",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "WIRELESSAD",
+    "category_text": "Case, PTT Mics",
+    "category": "WLCASE",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "Intercom Systems",
+    "category_text": "Intercom Cases",
+    "category": "Intercom Cases",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "WIRELESSAD",
+    "category_text": "Case, Wireless Receiver",
+    "category": "WLCASE",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "Shortcut booking codes",
+    "category_text": "Studio Camera Packages",
+    "category": "",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "Camcorder",
+    "category_text": "ENG Camcorder",
+    "category": "ENG Camcorder",
+    "pm": "Jeff Gawronski"
+  },
+  {
+    "department": "LED Tile and accessories",
+    "category_text": "Theatrixx LED Product",
+    "category": "",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "Audio Snakes",
+    "category_text": "3' XLR LOOM FOR HICAP RACK",
+    "category": "",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "Shortcut booking codes",
+    "category_text": "30\" Multipack Mon Booking Kit",
+    "category": "",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "Shortcut booking codes",
+    "category_text": "40\" Multipack Mon Booking Kit",
+    "category": "",
+    "pm": "Michael Youdelis"
+  },
+  {
+    "department": "Rack Mount Cases",
+    "category_text": "Brompton XD10 solo",
+    "category": "Brompton XD10 solo",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "LED booking kits",
+    "category_text": "ROE LED booking kits",
+    "category": "",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "LED booking kits",
+    "category_text": "Absen PL2.5 LED booking kit",
+    "category": "",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "LED booking kits",
+    "category_text": "Absen PL2.5 LED booking kit",
+    "category": "",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "LED booking kits",
+    "category_text": "Absen PL2.5 LED booking kit",
+    "category": "",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "LED booking kits",
+    "category_text": "Absen PL2.5 LED booking kit",
+    "category": "",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "LED booking kits",
+    "category_text": "Absen PL2.5 LED booking kit",
+    "category": "",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "LED booking kits",
+    "category_text": "Absen PL2.5 LED booking kit",
+    "category": "",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "LED booking kits",
+    "category_text": "Absen PL2.5 LED booking kit",
+    "category": "",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "LED booking kits",
+    "category_text": "Absen PL2.5 LED booking kit",
+    "category": "",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "LED booking kits",
+    "category_text": "Absen PL2.5 LED booking kit",
+    "category": "",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "LED booking kits",
+    "category_text": "Absen PL2.5 LED booking kit",
+    "category": "",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "LED booking kits",
+    "category_text": "ROE LED booking kits",
+    "category": "",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "LED booking kits",
+    "category_text": "ROE LED booking kits",
+    "category": "",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "LED booking kits",
+    "category_text": "ROE LED booking kits",
+    "category": "",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "LED booking kits",
+    "category_text": "Theatrixx LED booking kit",
+    "category": "",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "Power cables and adapters",
+    "category_text": "XVT3 - Theatrixx power cable",
+    "category": "",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "Communication Cables",
+    "category_text": "XVT9- DuraCAT UTP CAT6E",
+    "category": "",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "Communication Cables",
+    "category_text": "XVT9- DuraCAT UTP CAT6E",
+    "category": "",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "Audio Snakes",
+    "category_text": "4 Channel Audio Snake",
+    "category": "",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "Audio Snakes",
+    "category_text": "4 Channel Audio Snake",
+    "category": "",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "Audio Snakes",
+    "category_text": "4 Channel Audio Snake",
+    "category": "",
+    "pm": "Bryon Huber"
+  },
+  {
+    "department": "Shortcut booking codes",
+    "category_text": "Shortuct codes for 4:3 Aspect",
+    "category": "",
+    "pm": "Ian Fisher"
+  },
+  {
+    "department": "Lighting Fixture",
+    "category_text": "LED Balloon",
+    "category": "",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "Lighting Fixture",
+    "category_text": "LED Balloon",
+    "category": "",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "Lighting Fixture",
+    "category_text": "LED Balloon",
+    "category": "",
+    "pm": "Scott Sanchez"
+  },
+  {
+    "department": "LED booking kits",
+    "category_text": "LED Poster booking kits",
+    "category": "",
+    "pm": "Justin Eaton"
+  },
+  {
+    "department": "Apple computers",
+    "category_text": "Apple Mac Studio desktops",
+    "category": "",
+    "pm": "Serhii Yefimenko"
+  }
+]
