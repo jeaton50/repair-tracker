@@ -1,7 +1,116 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Download, ChevronDown, ChevronUp, Upload, FileSpreadsheet, Save, Cloud } from 'lucide-react';
 import { db } from './firebase';
 import { collection, doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+
+// Simple editor panel - completely separate from table
+const RowEditor = ({ row, rowIndex, onSave, onClose }) => {
+  const [meetingNote, setMeetingNote] = useState(row['Meeting Note'] || '');
+  const [followUp, setFollowUp] = useState(row['Requires Follow Up'] || '');
+
+  const handleSave = () => {
+    onSave(rowIndex, {
+      'Meeting Note': meetingNote,
+      'Requires Follow Up': followUp
+    });
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">Edit Repair Item</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              {row['Barcode#']} - {row['Equipment']}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 text-2xl"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="p-6 space-y-6 overflow-y-auto flex-1">
+          <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg text-sm">
+            <div>
+              <span className="font-semibold text-gray-700">Location:</span> {row['Location']}
+            </div>
+            <div>
+              <span className="font-semibold text-gray-700">Assigned To:</span> {row['Assigned To'] || 'Unassigned'}
+            </div>
+            <div>
+              <span className="font-semibold text-gray-700">Ticket:</span> {row['Repair Ticket']}
+            </div>
+            <div>
+              <span className="font-semibold text-gray-700">Age:</span> {row['Asset Repair Age']} days
+            </div>
+            <div>
+              <span className="font-semibold text-gray-700">Cost:</span> ${row['Repair Cost']}
+            </div>
+            <div>
+              <span className="font-semibold text-gray-700">Customer:</span> {row['Customer']}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Meeting Note
+            </label>
+            <textarea
+              value={meetingNote}
+              onChange={(e) => setMeetingNote(e.target.value)}
+              placeholder="Add meeting notes here..."
+              className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Requires Follow Up
+            </label>
+            <textarea
+              value={followUp}
+              onChange={(e) => setFollowUp(e.target.value)}
+              placeholder="Add follow-up notes here..."
+              className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            />
+          </div>
+
+          <div className="p-4 bg-gray-50 rounded-lg text-sm space-y-2">
+            <div>
+              <span className="font-semibold text-gray-700">Damage:</span> {row['Damage Description']}
+            </div>
+            <div>
+              <span className="font-semibold text-gray-700">Ticket Notes:</span> {row['Ticket Description']}
+            </div>
+            <div>
+              <span className="font-semibold text-gray-700">Reason:</span> {row['Repair Reason']}
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-6 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const RepairTrackerSheet = () => {
   const [activeTab, setActiveTab] = useState('combined');
@@ -14,12 +123,44 @@ const RepairTrackerSheet = () => {
   const [categoryMapping, setCategoryMapping] = useState([]);
   const [loading, setLoading] = useState(false);
   const [wrapText, setWrapText] = useState(false);
-  const [editingCell, setEditingCell] = useState(null);
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [unmatchedCategories, setUnmatchedCategories] = useState([]);
+  
+  // Row editor state
+  const [editingRow, setEditingRow] = useState(null);
+  const [editingRowIndex, setEditingRowIndex] = useState(null);
+  
+  const pendingChangesRef = useRef({});
+  
+  const handleRowEdit = (rowIndex, changes) => {
+    // Store in pending changes ref
+    if (!pendingChangesRef.current[rowIndex]) {
+      pendingChangesRef.current[rowIndex] = {};
+    }
+    Object.assign(pendingChangesRef.current[rowIndex], changes);
+    
+    // Immediately update the displayed data so changes show in table
+    setEditedCombinedData(prevData => {
+      const updatedData = [...prevData];
+      updatedData[rowIndex] = { ...updatedData[rowIndex], ...changes };
+      return updatedData;
+    });
+    
+    setHasUnsavedChanges(true);
+  };
+  
+  const openRowEditor = (rowIndex) => {
+    setEditingRowIndex(rowIndex);
+    setEditingRow(filteredAndSortedData[rowIndex]);
+  };
+  
+  const closeRowEditor = () => {
+    setEditingRow(null);
+    setEditingRowIndex(null);
+  };
 
   useEffect(() => {
     const loadXLSX = async () => {
@@ -45,7 +186,6 @@ const RepairTrackerSheet = () => {
     setLoading(true);
     try {
       if (type === 'mapping') {
-        // Handle JSON file upload
         const text = await file.text();
         const jsonData = JSON.parse(text);
         setCategoryMapping(jsonData);
@@ -120,7 +260,6 @@ const RepairTrackerSheet = () => {
       }
     });
 
-    // Create category to PM mapping
     const categoryToPM = new Map();
     categoryMapping.forEach(item => {
       if (item.category && item.pm) {
@@ -132,7 +271,6 @@ const RepairTrackerSheet = () => {
       }
     });
 
-    // Track unmatched categories
     const unmatchedSet = new Set();
 
     const calculateAge = (dateStr) => {
@@ -153,14 +291,12 @@ const RepairTrackerSheet = () => {
       const ticket = ticketMap.get(reportBarcode) || {};
       const ticketNotes = ticket['Notes'] || '';
       
-      // Look up PM based on category
-      const category = (report['Category'] || '').trim().toUpperCase();
-      const mappingInfo = categoryToPM.get(category);
+      const category = (report['Category'] || '').trim();
+      const mappingInfo = categoryToPM.get(category.toUpperCase());
       const assignedPM = mappingInfo ? mappingInfo.pm : '';
       
-      // Track if category is unmatched
       if (category && !assignedPM) {
-        unmatchedSet.add(report['Category'] || '');
+        unmatchedSet.add(category);
       }
       
       return {
@@ -191,7 +327,6 @@ const RepairTrackerSheet = () => {
       };
     });
     
-    // Update unmatched categories
     setUnmatchedCategories(Array.from(unmatchedSet).sort());
     
     return result;
@@ -221,6 +356,7 @@ const RepairTrackerSheet = () => {
         }
         
         setEditedCombinedData(updatedData);
+        pendingChangesRef.current = {};
         console.log('Loaded notes from Firebase');
       } catch (error) {
         console.error('Error loading notes:', error);
@@ -231,22 +367,24 @@ const RepairTrackerSheet = () => {
     loadNotesFromFirebase();
   }, [combinedData]);
 
-  const handleCellEdit = (rowKey, column, value) => {
-  setEditedCombinedData(prevData => {
-    const idx = prevData.findIndex(r => r['Barcode#'] === rowKey);
-    if (idx === -1) return prevData;
-    const updated = [...prevData];
-    updated[idx] = { ...updated[idx], [column]: value };
-    return updated;
-  });
-  setHasUnsavedChanges(true);
-};
-
-
   const saveNotesToFirebase = async () => {
     setSaving(true);
     try {
-      const savePromises = editedCombinedData.map(async (row) => {
+      const updatedData = [...editedCombinedData];
+      
+      Object.keys(pendingChangesRef.current).forEach(rowIndex => {
+        const changes = pendingChangesRef.current[rowIndex];
+        Object.keys(changes).forEach(column => {
+          updatedData[rowIndex] = { 
+            ...updatedData[rowIndex], 
+            [column]: changes[column] 
+          };
+        });
+      });
+      
+      setEditedCombinedData(updatedData);
+      
+      const savePromises = updatedData.map(async (row) => {
         const barcode = row['Barcode#'];
         if (!barcode) return;
         
@@ -265,6 +403,9 @@ const RepairTrackerSheet = () => {
       });
       
       await Promise.all(savePromises);
+      
+      pendingChangesRef.current = {};
+      
       setLastSaved(new Date());
       setHasUnsavedChanges(false);
       alert('Notes saved successfully to Firebase!');
@@ -311,7 +452,6 @@ const RepairTrackerSheet = () => {
     return Array.from(pms).sort();
   }, [editedCombinedData]);
 
-  // Calculate workload by PM
   const pmWorkload = useMemo(() => {
     const workload = {};
     editedCombinedData.forEach(row => {
@@ -335,7 +475,6 @@ const RepairTrackerSheet = () => {
       }
     });
     
-    // Calculate average ages
     Object.keys(workload).forEach(pm => {
       if (workload[pm].ages.length > 0) {
         const sum = workload[pm].ages.reduce((a, b) => a + b, 0);
@@ -346,7 +485,6 @@ const RepairTrackerSheet = () => {
     return workload;
   }, [editedCombinedData]);
 
-  // Get all unique categories from report data
   const allCategories = useMemo(() => {
     const cats = new Set();
     reportData.forEach(report => {
@@ -515,7 +653,6 @@ const RepairTrackerSheet = () => {
           </div>
           
           <div className="p-6 space-y-6 overflow-y-auto flex-1">
-            {/* Add New Mapping */}
             <div className="bg-blue-50 p-4 rounded-lg">
               <h3 className="font-semibold text-blue-900 mb-3">Add New Mapping</h3>
               <div className="grid grid-cols-2 gap-3 mb-3">
@@ -580,10 +717,9 @@ const RepairTrackerSheet = () => {
               </button>
             </div>
 
-            {/* Unmatched Categories Warning */}
             {unmatchedCategories.length > 0 && (
               <div className="bg-red-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-red-900 mb-2">⚠️ Unmatched Categories ({unmatchedCategories.length})</h3>
+                <h3 className="font-semibold text-red-900 mb-2">Unmatched Categories ({unmatchedCategories.length})</h3>
                 <p className="text-sm text-red-800 mb-3">These categories don't have PM assignments:</p>
                 <div className="flex flex-wrap gap-2">
                   {unmatchedCategories.map(cat => (
@@ -595,7 +731,6 @@ const RepairTrackerSheet = () => {
               </div>
             )}
 
-            {/* Current Mappings */}
             <div>
               <div className="flex justify-between items-center mb-3">
                 <h3 className="font-semibold text-gray-800">Current Mappings ({categoryMapping.length})</h3>
@@ -616,10 +751,10 @@ const RepairTrackerSheet = () => {
                         <span className="font-semibold text-blue-600">{mapping.pm}</span>
                       </div>
                       {mapping.category_text && (
-                        <p className="text-sm text-gray-600">📝 {mapping.category_text}</p>
+                        <p className="text-sm text-gray-600">{mapping.category_text}</p>
                       )}
                       {mapping.department && (
-                        <p className="text-xs text-gray-500">🏢 Department: {mapping.department}</p>
+                        <p className="text-xs text-gray-500">Department: {mapping.department}</p>
                       )}
                     </div>
                     <button
@@ -633,7 +768,6 @@ const RepairTrackerSheet = () => {
               </div>
             </div>
 
-            {/* All Categories List */}
             <div>
               <h3 className="font-semibold text-gray-800 mb-3">All Categories in Data ({allCategories.length})</h3>
               <div className="flex flex-wrap gap-2">
@@ -684,7 +818,7 @@ const RepairTrackerSheet = () => {
                 onClick={() => setShowCategoryManager(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 cursor-pointer transition-colors text-sm"
               >
-                📚 Manage Categories
+                Manage Categories
                 {unmatchedCategories.length > 0 && (
                   <span className="bg-red-500 text-white px-2 py-0.5 rounded-full text-xs">
                     {unmatchedCategories.length}
@@ -793,7 +927,7 @@ const RepairTrackerSheet = () => {
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            🔍 Diagnostics
+            Diagnostics
           </button>
         </div>
       </div>
@@ -843,7 +977,7 @@ const RepairTrackerSheet = () => {
                     className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white min-w-[200px]"
                   >
                     <option value="">All Assigned To</option>
-                    <option value="__unassigned__">🔴 Unassigned</option>
+                    <option value="__unassigned__">Unassigned</option>
                     {uniquePMs.map(pm => (
                       <option key={pm} value={pm}>
                         {pm}
@@ -889,26 +1023,26 @@ const RepairTrackerSheet = () => {
           {activeTab === 'combined' && (
             <div className="flex items-center gap-4 text-xs text-gray-500">
               <span>
-                📊 Total: {editedCombinedData.length} items
+                Total: {editedCombinedData.length} items
               </span>
               <span className="text-green-600">
-                ✅ Assigned: {editedCombinedData.filter(row => row['Assigned To'] && row['Assigned To'] !== '').length}
+                Assigned: {editedCombinedData.filter(row => row['Assigned To'] && row['Assigned To'] !== '').length}
               </span>
               <span className="text-red-600 font-semibold">
-                🔴 Unassigned: {editedCombinedData.filter(row => !row['Assigned To'] || row['Assigned To'] === '').length}
+                Unassigned: {editedCombinedData.filter(row => !row['Assigned To'] || row['Assigned To'] === '').length}
               </span>
               {categoryMapping.length > 0 && (
                 <span className="text-purple-600">
-                  📚 {categoryMapping.length} category mappings
+                  {categoryMapping.length} category mappings
                 </span>
               )}
               {unmatchedCategories.length > 0 && (
                 <span className="text-orange-600 font-semibold">
-                  ⚠️ {unmatchedCategories.length} categories without PM
+                  {unmatchedCategories.length} categories without PM
                 </span>
               )}
               <span className="text-blue-600">
-                📈 {uniquePMs.length} unique PMs
+                {uniquePMs.length} unique PMs
               </span>
             </div>
           )}
@@ -930,25 +1064,24 @@ const RepairTrackerSheet = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div className="p-4 bg-blue-50 rounded-lg">
-                  <h3 className="font-semibold text-blue-900 mb-2">📋 Repair Ticket List</h3>
+                  <h3 className="font-semibold text-blue-900 mb-2">Repair Ticket List</h3>
                   <p className="text-2xl font-bold text-blue-800">{ticketData.length}</p>
                   <p className="text-sm text-blue-700">records</p>
                 </div>
                 
                 <div className="p-4 bg-green-50 rounded-lg">
-                  <h3 className="font-semibold text-green-900 mb-2">🔧 Repair Report</h3>
+                  <h3 className="font-semibold text-green-900 mb-2">Repair Report</h3>
                   <p className="text-2xl font-bold text-green-800">{reportData.length}</p>
                   <p className="text-sm text-green-700">records</p>
                 </div>
                 
                 <div className="p-4 bg-purple-50 rounded-lg">
-                  <h3 className="font-semibold text-purple-900 mb-2">📚 Category Mappings</h3>
+                  <h3 className="font-semibold text-purple-900 mb-2">Category Mappings</h3>
                   <p className="text-2xl font-bold text-purple-800">{categoryMapping.length}</p>
                   <p className="text-sm text-purple-700">categories mapped</p>
                 </div>
               </div>
 
-              {/* Category Mapping Status */}
               <div className="p-4 bg-gray-50 rounded-lg mb-6">
                 <h3 className="font-semibold text-gray-900 mb-3">Category Mapping Status</h3>
                 <div className="grid grid-cols-2 gap-4">
@@ -978,7 +1111,7 @@ const RepairTrackerSheet = () => {
 
                 {unmatchedCategories.length > 0 && (
                   <div className="mt-4 p-3 bg-red-50 rounded border border-red-200">
-                    <p className="text-sm font-semibold text-red-900 mb-2">⚠️ Unmatched Categories:</p>
+                    <p className="text-sm font-semibold text-red-900 mb-2">Unmatched Categories:</p>
                     <div className="flex flex-wrap gap-2">
                       {unmatchedCategories.map(cat => (
                         <span key={cat} className="px-2 py-1 bg-red-100 text-red-800 rounded text-xs">
@@ -990,10 +1123,9 @@ const RepairTrackerSheet = () => {
                 )}
               </div>
 
-              {/* PM Workload Statistics */}
               {editedCombinedData.length > 0 && (
                 <div className="p-4 bg-indigo-50 rounded-lg">
-                  <h3 className="font-semibold text-indigo-900 mb-4">👥 Workload by Assigned PM</h3>
+                  <h3 className="font-semibold text-indigo-900 mb-4">Workload by Assigned PM</h3>
                   <div className="space-y-3">
                     {Object.entries(pmWorkload)
                       .sort((a, b) => b[1].count - a[1].count)
@@ -1021,7 +1153,6 @@ const RepairTrackerSheet = () => {
                               </p>
                             </div>
                           </div>
-                          {/* Progress bar */}
                           <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
                             <div
                               className={`h-full ${pm === 'Unassigned' ? 'bg-red-500' : 'bg-indigo-500'}`}
@@ -1030,33 +1161,6 @@ const RepairTrackerSheet = () => {
                           </div>
                         </div>
                       ))}
-                  </div>
-                </div>
-              )}
-
-              {categoryMapping.length > 0 && (
-                <div className="mt-6 p-4 bg-purple-50 rounded-lg">
-                  <h3 className="font-semibold text-purple-900 mb-3">Sample Category Mappings</h3>
-                  <div className="space-y-2">
-                    {categoryMapping.slice(0, 10).map((item, idx) => (
-                      <div key={idx} className="p-3 bg-white rounded border border-purple-100">
-                        <div className="flex justify-between items-start mb-1">
-                          <span className="font-bold text-purple-900">{item.category}</span>
-                          <span className="text-purple-600 font-semibold">→ {item.pm}</span>
-                        </div>
-                        {item.category_text && (
-                          <p className="text-xs text-purple-700">📝 {item.category_text}</p>
-                        )}
-                        {item.department && (
-                          <p className="text-xs text-purple-600">🏢 {item.department}</p>
-                        )}
-                      </div>
-                    ))}
-                    {categoryMapping.length > 10 && (
-                      <p className="text-xs text-purple-700 italic mt-2">
-                        ... and {categoryMapping.length - 10} more mappings
-                      </p>
-                    )}
                   </div>
                 </div>
               )}
@@ -1112,75 +1216,26 @@ const RepairTrackerSheet = () => {
                 {filteredAndSortedData.map((row, idx) => {
                   const hasAssignment = row['Assigned To'] && row['Assigned To'] !== '';
                   const rowBgColor = activeTab === 'combined' && !hasAssignment ? 'bg-red-50' : '';
+                  const isEditable = activeTab === 'combined';
                   
                   return (
-                    <tr key={idx} className={`hover:bg-gray-50 ${rowBgColor}`}>
+                    <tr 
+                      key={idx} 
+                      className={`${rowBgColor} ${isEditable ? 'hover:bg-blue-50 cursor-pointer' : 'hover:bg-gray-50'}`}
+                      onClick={() => isEditable && openRowEditor(idx)}
+                    >
                       {columns.map((col) => {
-                        const isTextEditable = activeTab === 'combined' && (col === 'Meeting Note' || col === 'Requires Follow Up');
-                        const isPMEditable = activeTab === 'combined' && col === 'Assigned To';
                         const cellValue = row[col];
-                        const isEditing =
-  editingCell?.rowKey === row['Barcode#'] && editingCell?.column === col;
                         
                         return (
                           <td 
                             key={col} 
                             className={`px-4 py-3 text-sm text-gray-900 ${
                               wrapText ? 'whitespace-normal break-words' : 'whitespace-nowrap'
-                            } ${(isTextEditable || isPMEditable) ? 'cursor-text' : ''}`}
+                            }`}
                             style={wrapText ? { maxWidth: '300px' } : undefined}
-                            onClick={() => {
-  if (isTextEditable || isPMEditable) {
-    setEditingCell({ rowKey: row['Barcode#'], column: col });
-  }
-}}
-
                           >
-                            {isPMEditable && isEditing ? (
-                              <select
-  autoFocus
-  value={cellValue}
-  onChange={(e) => handleCellEdit(row['Barcode#'], col, e.target.value)}
-  onBlur={() => setEditingCell(null)}
-  className="w-full p-2 border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
->
-  <option value="">-- Unassigned --</option>
-  {uniquePMs.map(pm => (
-    <option key={pm} value={pm}>{pm}</option>
-  ))}
-
-
-                              </select>
-                            ) : isPMEditable ? (
-                              <div className={`min-h-[40px] p-2 border border-transparent hover:border-gray-300 rounded flex items-center ${
-                                !cellValue ? 'text-red-600 font-semibold' : 'text-gray-900'
-                              }`}>
-                                {cellValue || '🔴 Click to assign'}
-                              </div>
-                            ) : isTextEditable && isEditing ? (
-                              <textarea
-  autoFocus
-  value={cellValue}
-  onChange={(e) => handleCellEdit(row['Barcode#'], col, e.target.value)}
-  onBlur={() => setEditingCell(null)}
-  className="w-full min-h-[60px] p-2 border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
-  style={{ minWidth: '200px' }}
-  onKeyDown={(e) => {
-    if (e.key === 'Escape') setEditingCell(null);
-  }}
-/>
-
-                            ) : isTextEditable ? (
-                              <div 
-                                className={`min-h-[40px] p-2 border border-transparent hover:border-gray-300 rounded whitespace-pre-wrap ${
-                                  !cellValue ? 'text-gray-400 italic' : ''
-                                }`}
-                              >
-                                {cellValue || 'Click to add note...'}
-                              </div>
-                            ) : (
-                              formatCell(cellValue)
-                            )}
+                            {formatCell(cellValue)}
                           </td>
                         );
                       })}
@@ -1215,6 +1270,15 @@ const RepairTrackerSheet = () => {
       )}
       
       {showCategoryManager && <CategoryManager />}
+      
+      {editingRow && (
+        <RowEditor
+          row={editingRow}
+          rowIndex={editingRowIndex}
+          onSave={handleRowEdit}
+          onClose={closeRowEditor}
+        />
+      )}
     </div>
   );
 };
