@@ -1,0 +1,18 @@
+// src/authConfig.js
+export const msalConfig = {
+  auth: {
+    clientId: "5764301a-9d69-4b4e-8bb6-83dbd4215e24",
+    authority: "https://login.microsoftonline.com/b958ba39-da13-4553-a009-35b1649f44eb",
+    redirectUri: import.meta.env.DEV
+      ? "http://localhost:5173/repair-tracker/"
+      : "https://jeaton50.github.io/repair-tracker/" // <-- your real prod URL
+  }
+};
+
+export const loginRequest = {
+  scopes: ["openid","profile","email","offline_access","User.Read","Files.Read"]
+};
+
+export const graphConfig = {
+  folderPath: import.meta.env.VITE_RT_FOLDER ?? "RepairTracker",
+};

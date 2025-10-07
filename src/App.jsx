@@ -201,7 +201,7 @@ const RepairTrackerSheet = () => {
   const [reportData, setReportData] = useState([]);
   const [categoryMapping, setCategoryMapping] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [wrapText, setWrapText] = useState(false);
+  const wrapText = true;
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [unmatchedCategories, setUnmatchedCategories] = useState([]);
 
@@ -1008,13 +1008,7 @@ const loadFromOneDrive = async (silent = false) => {
               )}
             </div>
 
-            <div className="flex items-center gap-2 ml-4">
-              <button
-                onClick={() => setWrapText(!wrapText)}
-                className={`px-4 py-2 border rounded-lg transition-colors text-sm ${wrapText ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
-              >
-                {wrapText ? 'Unwrap' : 'Wrap'} Text
-              </button>
+          
 
               <button
                 onClick={exportToCSV}
@@ -1126,8 +1120,8 @@ const loadFromOneDrive = async (silent = false) => {
                       <th
                         key={col}
                         onClick={() => handleSort(col)}
-                        className={`px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 bg-gray-50 ${wrapText ? 'whitespace-normal' : 'whitespace-nowrap'}`}
-                      >
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 bg-gray-50 whitespace-normal"
+
                         <div className="flex items-center gap-2">
                           {col}
                           {isEditable && <span className="text-blue-500">✏️</span>}
@@ -1146,7 +1140,12 @@ const loadFromOneDrive = async (silent = false) => {
                   return (
                     <tr key={idx} className={`${rowBgColor} ${isEditable ? 'hover:bg-blue-50 cursor-pointer' : 'hover:bg-gray-50'}`} onClick={() => isEditable && openRowEditor(idx)}>
                       {columns.map((col) => (
-                        <td key={col} className={`px-4 py-3 text-sm text-gray-900 ${wrapText ? 'whitespace-normal break-words' : 'whitespace-nowrap'}`} style={wrapText ? { maxWidth: '300px' } : undefined}>
+                       <td
+  key={col}
+  className="px-4 py-3 text-sm text-gray-900 whitespace-normal break-words"
+  style={{ maxWidth: '300px' }}
+>
+
                           {formatCell(row[col])}
                         </td>
                       ))}
