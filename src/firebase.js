@@ -2,12 +2,13 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+  apiKey: "AIzaSyGCtJKb9tfptKFml0BDcCUeWNMOU_L6uSDs",
+  authDomain: "repair-tracker-add33.firebaseapp.com",
+  projectId: "repair-tracker-add33",
+  storageBucket: "repair-tracker-add33.firebasestorage.app",
+  messagingSenderId: "105779807489",
+  appId: "1:105779807489:web:83bc4a86c67535f624c700",
+  measurementId: "G-MR3RVKELD7"
 };
 
 // Initialize Firebase
