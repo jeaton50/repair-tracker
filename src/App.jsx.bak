@@ -1123,7 +1123,7 @@ const loadFromOneDrive = async (silent = false) => {
                   {columns.map((col) => {
                     const isEditable = activeTab === 'combined' && (col === 'Meeting Note' || col === 'Requires Follow Up');
                     return (
-                      <th
+                      <th>
                         key={col}
                         onClick={() => handleSort(col)}
                         className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 bg-gray-50 whitespace-normal"
