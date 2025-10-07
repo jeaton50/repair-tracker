@@ -1126,8 +1126,8 @@ const loadFromOneDrive = async (silent = false) => {
                       <th
                         key={col}
                         onClick={() => handleSort(col)}
-                        className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 bg-gray-50 whitespace-normal"
-
+                        className={`px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 bg-gray-50 ${wrapText ? 'whitespace-normal' : 'whitespace-nowrap'}`}
+                      >
                         <div className="flex items-center gap-2">
                           {col}
                           {isEditable && <span className="text-blue-500">✏️</span>}

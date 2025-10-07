@@ -1123,7 +1123,7 @@ const loadFromOneDrive = async (silent = false) => {
                   {columns.map((col) => {
                     const isEditable = activeTab === 'combined' && (col === 'Meeting Note' || col === 'Requires Follow Up');
                     return (
-                      <th>
+                      <th
                         key={col}
                         onClick={() => handleSort(col)}
                         className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 bg-gray-50 whitespace-normal"
@@ -1146,12 +1146,7 @@ const loadFromOneDrive = async (silent = false) => {
                   return (
                     <tr key={idx} className={`${rowBgColor} ${isEditable ? 'hover:bg-blue-50 cursor-pointer' : 'hover:bg-gray-50'}`} onClick={() => isEditable && openRowEditor(idx)}>
                       {columns.map((col) => (
-                       <td
-  key={col}
-  className="px-4 py-3 text-sm text-gray-900 whitespace-normal break-words"
-  style={{ maxWidth: '300px' }}
->
-
+                        <td key={col} className={`px-4 py-3 text-sm text-gray-900 ${wrapText ? 'whitespace-normal break-words' : 'whitespace-nowrap'}`} style={wrapText ? { maxWidth: '300px' } : undefined}>
                           {formatCell(row[col])}
                         </td>
                       ))}
