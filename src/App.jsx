@@ -1008,7 +1008,13 @@ const loadFromOneDrive = async (silent = false) => {
               )}
             </div>
 
-          
+            <div className="flex items-center gap-2 ml-4">
+              <button
+                onClick={() => setWrapText(!wrapText)}
+                className={`px-4 py-2 border rounded-lg transition-colors text-sm ${wrapText ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+              >
+                {wrapText ? 'Unwrap' : 'Wrap'} Text
+              </button>
 
               <button
                 onClick={exportToCSV}
