@@ -888,6 +888,44 @@ const RepairTrackerSheet = () => {
 
 
             {/* Uploads (manual fallback) */}
+            <div className="flex gap-2 items-center flex-wrap">
+            {!isAuthenticated ? (
+              <button
+                onClick={handleLogin}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+              >
+                <Cloud size={16} />
+                Sign in
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => loadFromSharePoint(false)}
+                  disabled={loading}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
+                >
+                  <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+                  Refresh
+                </button>
+                <button
+                  onClick={() => setShowCategoryManager(true)}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
+                >
+                  Manage Categories
+                  {unmatchedCategories.length > 0 && (
+                    <span className="ml-2 bg-red-500 text-white px-2 py-0.5 rounded-full text-xs">
+                      {unmatchedCategories.length}
+                    </span>
+                  )}
+                </button>
+                <button onClick={handleLogout} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm">
+                  Sign Out
+                </button>
+              </>
+            )}
+
+            {/* UPLOAD BUTTONS HIDDEN - USING SHAREPOINT AS DATA SOURCE
+            
             <label className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 cursor-pointer transition-colors text-sm">
               <Upload size={16} />
               Upload Mapping
@@ -932,6 +970,8 @@ const RepairTrackerSheet = () => {
                 disabled={loading}
               />
             </label>
+            
+            END OF HIDDEN UPLOAD BUTTONS */}
           </div>
         </div>
       </div>
