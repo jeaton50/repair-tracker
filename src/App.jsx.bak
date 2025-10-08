@@ -833,7 +833,7 @@ const RepairTrackerSheet = () => {
   return (
     <div className="w-full h-screen flex flex-col bg-gray-50">
      
-     /* Header */
+     
 <div className="bg-white border-b px-6 py-4">
   <div className="flex items-center justify-between">
     {/* Left: title + status */}
