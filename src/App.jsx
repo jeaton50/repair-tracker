@@ -229,7 +229,7 @@ const RepairTrackerSheet = () => {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [msalInitialized, setMsalInitialized] = useState(false);
   const [loading, setLoading] = useState(false);
-  const SHOW_MANUAL_UPLOADS = isAuthenticated && userName === "Justin Eaton";
+  
 
   // Filters - SINGLE DECLARATION
   const [locationFilter, setLocationFilter] = useState("");
@@ -833,128 +833,222 @@ const RepairTrackerSheet = () => {
   return (
     <div className="w-full h-screen flex flex-col bg-gray-50">
       {/* Header */}
-     
-<div className="bg-white border-b px-6 py-4">
-  <div className="flex items-center justify-between">
-    {/* Left: title + status */}
-    <div>
-      <h1 className="text-2xl font-bold text-gray-800">Repair Tracker Dashboard</h1>
-      <div className="flex items-center gap-3 mt-1">
-        <p className="text-sm text-gray-500">
-          {isAuthenticated ? `Connected as ${userName}` : "Not connected"}
-        </p>
-        {isAuthenticated && (
-          <div className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
-            <Cloud size={12} /> OneDrive/SharePoint synced
+      <div className="bg-white border-b px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">Repair Tracker Dashboard</h1>
+            <div className="flex items-center gap-3 mt-1">
+              <p className="text-sm text-gray-500">
+                {isAuthenticated ? `Connected as ${userName}` : "Not connected"}
+              </p>
+              {isAuthenticated && (
+                <div className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
+                  <Cloud size={12} />
+                  OneDrive/SharePoint synced
+                </div>
+              )}
+              {lastSync && <span className="text-xs text-gray-500">Last sync: {lastSync.toLocaleTimeString()}</span>}
+            </div>
           </div>
+
+          <div className="flex gap-2 items-center flex-wrap">
+  {!isAuthenticated ? (
+    <button
+      onClick={handleLogin}
+      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+    >
+      <Cloud size={16} />
+      Sign in
+    </button>
+  ) : (
+    <>
+      <button
+        onClick={() => loadFromSharePoint(false)}
+        disabled={loading}
+        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
+      >
+        <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+        Refresh
+      </button>
+      <button
+        onClick={() => setShowCategoryManager(true)}
+        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
+      >
+        Manage Categories
+        {unmatchedCategories.length > 0 && (
+          <span className="ml-2 bg-red-500 text-white px-2 py-0.5 rounded-full text-xs">
+            {unmatchedCategories.length}
+          </span>
         )}
-        {lastSync && (
-          <span className="text-xs text-gray-500">Last sync: {lastSync.toLocaleTimeString()}</span>
-        )}
+      </button>
+      <button onClick={handleLogout} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm">
+        Sign Out
+      </button>
+    </>
+  )}
+
+
+            {/* Uploads (manual fallback) */}
+            <label className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 cursor-pointer transition-colors text-sm">
+              <Upload size={16} />
+              Upload Mapping
+              <input
+                type="file"
+                accept=".json"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  const text = await f.text();
+                  try {
+                    const json = JSON.parse(text);
+                    setCategoryMapping(json);
+                    alert(`Loaded ${json.length} category mappings`);
+                  } catch (err) {
+                    alert("Invalid JSON");
+                  }
+                }}
+                className="hidden"
+                disabled={loading}
+              />
+            </label>
+            <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-sm">
+              <Upload size={16} />
+              Upload Tickets
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={() => alert("Manual Excel upload not implemented here (SharePoint is source).")}
+                className="hidden"
+                disabled={loading}
+              />
+            </label>
+            <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-sm">
+              <Upload size={16} />
+              Upload Reports
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={() => alert("Manual Excel upload not implemented here (SharePoint is source).")}
+                className="hidden"
+                disabled={loading}
+              />
+            </label>
+          </div>
+        </div>
       </div>
-    </div>
 
-    {/* Right: actions */}
-    <div className="flex gap-2 items-center flex-wrap">
-      {!isAuthenticated ? (
-        <button
-          onClick={handleLogin}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
-        >
-          <Cloud size={16} />
-          Sign in
-        </button>
-      ) : (
-        <>
+      {/* Toolbar: Tabs on top, Search + Filters below */}
+      <div className="bg-white border-b">
+        {/* Tabs Row */}
+        <div className="flex items-center justify-between px-6 pt-3 border-b">
+          <div className="flex">
+            <button
+              onClick={() => setActiveTab("combined")}
+              className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+                activeTab === "combined" ? "border-blue-500 text-blue-600" : "border-transparent text-gray-500"
+              }`}
+            >
+              Combined ({combinedDataWithNotes.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("tickets")}
+              className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+                activeTab === "tickets" ? "border-blue-500 text-blue-600" : "border-transparent text-gray-500"
+              }`}
+            >
+              Tickets ({ticketData.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("reports")}
+              className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+                activeTab === "reports" ? "border-blue-500 text-blue-600" : "border-transparent text-gray-500"
+              }`}
+            >
+              Reports ({reportData.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("diagnostics")}
+              className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+                activeTab === "diagnostics" ? "border-orange-500 text-orange-600" : "border-transparent text-gray-500"
+              }`}
+            >
+              Diagnostics
+            </button>
+          </div>
+          
+          {/* Export */}
           <button
-            onClick={() => loadFromSharePoint(false)}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
+            onClick={exportToCSV}
+            disabled={getCurrentData().length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 text-sm"
           >
-            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-            Refresh
+            <Download size={18} />
+            Export
           </button>
+        </div>
 
-          <button
-            onClick={() => setShowCategoryManager(true)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
+        {/* Search and Filters Row */}
+        <div className="flex items-center px-6 py-3 gap-3">
+          {/* Search */}
+          <div className="flex-1 relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input
+              type="text"
+              placeholder="Search across all columns..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+            />
+          </div>
+
+          {/* Location filter */}
+          <select
+            value={locationFilter}
+            onChange={(e) => setLocationFilter(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm"
           >
-            Manage Categories
-            {unmatchedCategories.length > 0 && (
-              <span className="ml-2 bg-red-500 text-white px-2 py-0.5 rounded-full text-xs">
-                {unmatchedCategories.length}
-              </span>
-            )}
-          </button>
+            <option value="">All Locations</option>
+            {uniqueLocations.map((loc) => (
+              <option key={loc} value={loc}>{loc}</option>
+            ))}
+          </select>
 
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm"
-          >
-            Sign Out
-          </button>
-        </>
-      )}
+          {locationFilter && (
+            <button
+              onClick={() => setLocationFilter("")}
+              className="px-3 py-2 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              Clear Location
+            </button>
+          )}
 
-      {/* Uploads (manual fallback) – only for you */}
-      {SHOW_MANUAL_UPLOADS && (
-        <>
-          <label className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 cursor-pointer transition-colors text-sm">
-            <Upload size={16} />
-            Upload Mapping
-            <input
-              type="file"
-              accept=".json"
-              onChange={async (e) => {
-                const f = e.target.files?.[0];
-                if (!f) return;
-                const text = await f.text();
-                try {
-                  const json = JSON.parse(text);
-                  setCategoryMapping(json);
-                  alert(`Loaded ${json.length} category mappings`);
-                } catch {
-                  alert("Invalid JSON");
-                }
-              }}
-              className="hidden"
-              disabled={loading}
-            />
-          </label>
+          {/* PM filter only on Combined tab */}
+          {activeTab === "combined" && (
+            <>
+              <select
+                value={pmFilter}
+                onChange={(e) => setPmFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm"
+              >
+                <option value="">All Assigned To</option>
+                <option value="__unassigned__">Unassigned</option>
+                {uniquePMs.map((pm) => (
+                  <option key={pm} value={pm}>{pm}</option>
+                ))}
+              </select>
 
-          <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-sm">
-            <Upload size={16} />
-            Upload Tickets
-            <input
-              type="file"
-              accept=".xlsx,.xls"
-              onChange={() =>
-                alert("Manual Excel upload not implemented here (SharePoint is source).")
-              }
-              className="hidden"
-              disabled={loading}
-            />
-          </label>
-
-          <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-sm">
-            <Upload size={16} />
-            Upload Reports
-            <input
-              type="file"
-              accept=".xlsx,.xls"
-              onChange={() =>
-                alert("Manual Excel upload not implemented here (SharePoint is source).")
-              }
-              className="hidden"
-              disabled={loading}
-            />
-          </label>
-        </>
-      )}
-    </div>
-  </div>
-</div>
-
+              {pmFilter && (
+                <button
+                  onClick={() => setPmFilter("")}
+                  className="px-3 py-2 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Clear PM
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
 
       {/* Body */}
       <div className="flex-1 overflow-hidden px-6 py-4">
