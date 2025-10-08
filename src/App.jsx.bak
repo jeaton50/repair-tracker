@@ -386,10 +386,23 @@ const RepairTrackerSheet = () => {
     };
 	
 	 const formatTicketNumber = (ticket) => {
-    if (!ticket) return "";
-    // Remove all non-numeric characters (commas, periods, spaces, etc.)
-    return String(ticket).replace(/[^0-9]/g, "");
-  };
+  if (!ticket) return "";
+  
+  // Step 1: Remove everything except numbers and decimal point
+  // "1,234.00" becomes "1234.00"
+  const cleaned = String(ticket).replace(/[^0-9.]/g, "");
+  
+  // Step 2: Convert to number - this automatically removes trailing zeros
+  // "1234.00" becomes the number 1234
+  const num = parseFloat(cleaned);
+  
+  // Step 3: Check if it's a valid number
+  if (isNaN(num)) return "";
+  
+  // Step 4: Use Math.floor to remove any decimal part, then convert to string
+  // 1234.50 becomes 1234
+  return String(Math.floor(num));
+};
 
     const out = reportData.map((r) => {
       const bc = normalizeBarcode(r["Barcode#"]);
