@@ -43,8 +43,7 @@ const RowEditor = ({ row, rowIndex, onClose }) => {
   const [lastSaved, setLastSaved] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const saveTimeoutRef = useRef(null);
-  const [locationFilter, setLocationFilter] = useState("");
-  const [pmFilter, setPmFilter] = useState("");
+  
   
   const barcode = row["Barcode#"];
 
@@ -242,6 +241,10 @@ const App = () => {
   // UI state
   const [activeTab, setActiveTab] = useState("combined");
   const [searchTerm, setSearchTerm] = useState("");
+  // ✅ put here, in the parent component (e.g., RepairTrackerSheet)
+  const [locationFilter, setLocationFilter] = useState("");
+  const [pmFilter, setPmFilter] = useState("");
+
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [unmatchedCategories, setUnmatchedCategories] = useState([]);
