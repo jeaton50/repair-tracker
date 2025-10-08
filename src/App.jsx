@@ -229,6 +229,7 @@ const RepairTrackerSheet = () => {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [msalInitialized, setMsalInitialized] = useState(false);
   const [loading, setLoading] = useState(false);
+  const SHOW_MANUAL_UPLOADS = isAuthenticated && userName === "Justin Eaton";
 
   // Filters - SINGLE DECLARATION
   const [locationFilter, setLocationFilter] = useState("");
@@ -888,53 +889,57 @@ const RepairTrackerSheet = () => {
 
 
             {/* Uploads (manual fallback) */}
-            <label className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 cursor-pointer transition-colors text-sm">
-              <Upload size={16} />
-              Upload Mapping
-              <input
-                type="file"
-                accept=".json"
-                onChange={async (e) => {
-                  const f = e.target.files?.[0];
-                  if (!f) return;
-                  const text = await f.text();
-                  try {
-                    const json = JSON.parse(text);
-                    setCategoryMapping(json);
-                    alert(`Loaded ${json.length} category mappings`);
-                  } catch (err) {
-                    alert("Invalid JSON");
-                  }
-                }}
-                className="hidden"
-                disabled={loading}
-              />
-            </label>
-            <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-sm">
-              <Upload size={16} />
-              Upload Tickets
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={() => alert("Manual Excel upload not implemented here (SharePoint is source).")}
-                className="hidden"
-                disabled={loading}
-              />
-            </label>
-            <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-sm">
-              <Upload size={16} />
-              Upload Reports
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={() => alert("Manual Excel upload not implemented here (SharePoint is source).")}
-                className="hidden"
-                disabled={loading}
-              />
-            </label>
-          </div>
-        </div>
-      </div>
+{SHOW_MANUAL_UPLOADS && (
+  <>
+    <label className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 cursor-pointer transition-colors text-sm">
+      <Upload size={16} />
+      Upload Mapping
+      <input
+        type="file"
+        accept=".json"
+        onChange={async (e) => {
+          const f = e.target.files?.[0];
+          if (!f) return;
+          const text = await f.text();
+          try {
+            const json = JSON.parse(text);
+            setCategoryMapping(json);
+            alert(`Loaded ${json.length} category mappings`);
+          } catch {
+            alert("Invalid JSON");
+          }
+        }}
+        className="hidden"
+        disabled={loading}
+      />
+    </label>
+
+    <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-sm">
+      <Upload size={16} />
+      Upload Tickets
+      <input
+        type="file"
+        accept=".xlsx,.xls"
+        onChange={() => alert("Manual Excel upload not implemented here (SharePoint is source).")}
+        className="hidden"
+        disabled={loading}
+      />
+    </label>
+
+    <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-sm">
+      <Upload size={16} />
+      Upload Reports
+      <input
+        type="file"
+        accept=".xlsx,.xls"
+        onChange={() => alert("Manual Excel upload not implemented here (SharePoint is source).")}
+        className="hidden"
+        disabled={loading}
+      />
+    </label>
+  </>
+)}
+
 
       {/* Toolbar: Tabs on top, Search + Filters below */}
       <div className="bg-white border-b">
