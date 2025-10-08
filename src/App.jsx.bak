@@ -399,7 +399,7 @@ const RepairTrackerSheet = () => {
         "Requires Follow Up": "",
         "Assigned To": assignedPM,
         Location: r["Repair Location"] || t["Location"] || "",
-        "Repair Ticket": r["Ticket"] || "",
+        "Repair Ticket": formatTicketNumber(r["Ticket"]),
         "Asset Repair Age": ageInDays(r["Date In"]),
         "Barcode#": r["Barcode#"] || t["Barcode"] || "",
         Equipment: `(${r["Equipment"]}) - ${r["Description"]}`,

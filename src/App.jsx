@@ -384,6 +384,12 @@ const RepairTrackerSheet = () => {
       const today = new Date();
       return Math.ceil(Math.abs(today - d) / (1000 * 60 * 60 * 24));
     };
+	
+	 const formatTicketNumber = (ticket) => {
+    if (!ticket) return "";
+    // Remove all non-numeric characters (commas, periods, spaces, etc.)
+    return String(ticket).replace(/[^0-9]/g, "");
+  };
 
     const out = reportData.map((r) => {
       const bc = normalizeBarcode(r["Barcode#"]);
