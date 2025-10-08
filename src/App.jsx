@@ -464,10 +464,10 @@ const App = () => {
   };
 
   const CategoryManager = () => {
-    const [newCategory, setNewCategory] = useState("");
-    the const [newPM, setNewPM] = useState("");
-    const [newDepartment, setNewDepartment] = useState("");
-    const [newCategoryText, setNewCategoryText] = useState("");
+  const [newCategory, setNewCategory] = useState("");
+  const [newPM, setNewPM] = useState("");
+  const [newDepartment, setNewDepartment] = useState("");
+  const [newCategoryText, setNewCategoryText] = useState("");
 
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
