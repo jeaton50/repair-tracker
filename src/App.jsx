@@ -885,7 +885,7 @@ const RepairTrackerSheet = () => {
       </button>
     </>
   )}
-</div>
+
 
             {/* Uploads (manual fallback) */}
             <label className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 cursor-pointer transition-colors text-sm">
