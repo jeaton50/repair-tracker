@@ -16,6 +16,12 @@ const msalInstance = new PublicClientApplication(msalConfig);
 
 /* ----------------------------- Auth helper ----------------------------- */
 async function ensureAccessToken() {
+  // Ensure MSAL is initialized before any API calls
+  if (!msalInstance || !msalInstance.initialize) {
+    throw new Error("MSAL instance not available");
+  }
+  await msalInstance.initialize();
+
   let account = msalInstance.getAllAccounts()[0];
   if (!account) {
     await msalInstance.loginPopup(loginRequest);
@@ -209,6 +215,9 @@ const RowEditor = ({ row, rowIndex, onClose }) => {
 
 /* ------------------------------ Main App ------------------------------- */
 const App = () => {
+  // MSAL ready gate
+  const [msalReady, setMsalReady] = useState(false);
+
   // Core state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [accessToken, setAccessToken] = useState(null);
@@ -235,6 +244,35 @@ const App = () => {
   const [unmatchedCategories, setUnmatchedCategories] = useState([]);
   const [editingRow, setEditingRow] = useState(null);
   const [editingRowIndex, setEditingRowIndex] = useState(null);
+
+  /* ----------------------- Initialize MSAL once ------------------------ */
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        await msalInstance.initialize();
+        if (!mounted) return;
+
+        setMsalReady(true);
+
+        // Try restoring a session silently
+        const account = msalInstance.getAllAccounts()[0];
+        if (!account) return;
+
+        const r = await msalInstance.acquireTokenSilent({ ...loginRequest, account });
+        setAccessToken(r.accessToken);
+        setIsAuthenticated(true);
+        setUserName(account.name || "");
+        await loadFromSharePoint(true);
+      } catch (e) {
+        // Not signed in or init failed; UI will allow login
+        console.debug("MSAL init/restore:", e?.message || e);
+        setMsalReady(true);
+      }
+    })();
+    return () => { mounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* ----------------------- Helpers / formatters ------------------------ */
   const formatCell = (value) => {
@@ -426,10 +464,10 @@ const App = () => {
   };
 
   const CategoryManager = () => {
-    const [newCategory, setNewCategory] = useState("");
-    const [newPM, setNewPM] = useState("");
-    const [newDepartment, setNewDepartment] = useState("");
-    const [newCategoryText, setNewCategoryText] = useState("");
+  const [newCategory, setNewCategory] = useState("");
+  const [newPM, setNewPM] = useState("");
+  const [newDepartment, setNewDepartment] = useState("");
+  const [newCategoryText, setNewCategoryText] = useState("");
 
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -612,6 +650,8 @@ const App = () => {
   /* ------------------------------ Auth handlers ------------------------ */
   const handleLogin = async () => {
     try {
+      // Make sure MSAL is initialized before showing popup
+      await msalInstance.initialize();
       await msalInstance.loginPopup(loginRequest);
       const account = msalInstance.getAllAccounts()[0];
       const { accessToken } = await msalInstance.acquireTokenSilent({ ...loginRequest, account });
@@ -640,24 +680,6 @@ const App = () => {
   };
 
   /* -------------------------------- Effects ---------------------------- */
-  // Restore session & silent initial load
-  useEffect(() => {
-    (async () => {
-      try {
-        const account = msalInstance.getAllAccounts()[0];
-        if (!account) return;
-        const r = await msalInstance.acquireTokenSilent({ ...loginRequest, account });
-        setAccessToken(r.accessToken);
-        setIsAuthenticated(true);
-        setUserName(account.name || "");
-        await loadFromSharePoint(true);
-      } catch {
-        // not signed in
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // Auto-refresh every 5 minutes
   useEffect(() => {
     if (!autoRefresh || !isAuthenticated || !accessToken) return;
@@ -704,6 +726,12 @@ const App = () => {
     return rows;
   }, [currentData, searchTerm, sortConfig]);
 
+  const handleSort = (key) =>
+    setSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+    }));
+
   const openRowEditor = (idx) => {
     setEditingRowIndex(idx);
     setEditingRow(filteredAndSortedData[idx]);
@@ -723,7 +751,11 @@ const App = () => {
             <h1 className="text-2xl font-bold text-gray-800">Repair Tracker Dashboard</h1>
             <div className="flex items-center gap-3 mt-1">
               <p className="text-sm text-gray-500">
-                {isAuthenticated ? `Connected as ${userName}` : "Not connected"}
+                {!msalReady
+                  ? "Initializing…"
+                  : isAuthenticated
+                  ? `Connected as ${userName}`
+                  : "Not connected"}
               </p>
               {isAuthenticated && (
                 <div className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
@@ -740,7 +772,8 @@ const App = () => {
             {!isAuthenticated ? (
               <button
                 onClick={handleLogin}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                disabled={!msalReady}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm disabled:opacity-50"
               >
                 <Cloud size={16} />
                 Sign in
@@ -806,7 +839,6 @@ const App = () => {
                   if (!f) return;
                   setLoading(true);
                   try {
-                    // Lazy-load XLSX if needed
                     if (typeof window.XLSX === "undefined") {
                       await new Promise((res, rej) => {
                         const s = document.createElement("script");

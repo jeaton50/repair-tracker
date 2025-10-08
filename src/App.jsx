@@ -43,6 +43,9 @@ const RowEditor = ({ row, rowIndex, onClose }) => {
   const [lastSaved, setLastSaved] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const saveTimeoutRef = useRef(null);
+  const [locationFilter, setLocationFilter] = useState("");
+  const [pmFilter, setPmFilter] = useState("");
+  
   const barcode = row["Barcode#"];
 
   // Auto-save to Firebase
@@ -425,184 +428,237 @@ const App = () => {
   }, [baseCombinedData, notesMap]);
 
   /* ------------------------ Category Manager helpers -------------------- */
-  const [allCategories, uniquePMs] = useMemo(() => {
-    const cats = new Set();
-    const pms = new Set();
-    reportData.forEach((r) => r["Category"] && cats.add(r["Category"].trim()));
-    combinedDataWithNotes.forEach((row) => {
-      const pm = row["Assigned To"];
-      if (pm && pm.trim()) pms.add(pm.trim());
-    });
-    return [Array.from(cats).sort(), Array.from(pms).sort()];
-  }, [reportData, combinedDataWithNotes]);
+/* ------------------------ Category Manager helpers -------------------- */
+const [allCategories, uniquePMs] = useMemo(() => {
+  const cats = new Set();
+  const pms = new Set();
+  reportData.forEach((r) => r["Category"] && cats.add(r["Category"].trim()));
+  combinedDataWithNotes.forEach((row) => {
+    const pm = row["Assigned To"];
+    if (pm && pm.trim()) pms.add(pm.trim());
+  });
+  return [Array.from(cats).sort(), Array.from(pms).sort()];
+}, [reportData, combinedDataWithNotes]);
 
-  const addCategoryMapping = (category, pm, department = "", categoryText = "") => {
-    setCategoryMapping((prev) => {
-      const copy = [...prev];
-      const i = copy.findIndex((m) => m.category.trim().toUpperCase() === category.trim().toUpperCase());
-      const entry = { category: category.trim(), pm: pm.trim(), department: department.trim(), category_text: categoryText.trim() };
-      if (i >= 0) copy[i] = entry; else copy.push(entry);
-      return copy;
-    });
-  };
-
-  const removeCategoryMapping = (category) => {
-    setCategoryMapping((prev) =>
-      prev.filter((m) => m.category.trim().toUpperCase() !== category.trim().toUpperCase())
+const addCategoryMapping = (category, pm, department = "", categoryText = "") => {
+  setCategoryMapping((prev) => {
+    const copy = [...prev];
+    const i = copy.findIndex(
+      (m) => m.category.trim().toUpperCase() === category.trim().toUpperCase()
     );
-  };
+    const entry = {
+      category: category.trim(),
+      pm: pm.trim(),
+      department: department.trim(),
+      category_text: categoryText.trim(),
+    };
+    if (i >= 0) copy[i] = entry;
+    else copy.push(entry);
+    return copy;
+  });
+};
 
-  const exportCategoryMapping = () => {
-    const json = JSON.stringify(categoryMapping, null, 2);
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `category_mapping_${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+const removeCategoryMapping = (category) => {
+  setCategoryMapping((prev) =>
+    prev.filter(
+      (m) => m.category.trim().toUpperCase() !== category.trim().toUpperCase()
+    )
+  );
+};
 
-  const CategoryManager = () => {
+const exportCategoryMapping = () => {
+  const json = JSON.stringify(categoryMapping, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `category_mapping_${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+/* ------------------------ Category Manager UI ------------------------- */
+const CategoryManager = () => {
   const [newCategory, setNewCategory] = useState("");
   const [newPM, setNewPM] = useState("");
   const [newDepartment, setNewDepartment] = useState("");
   const [newCategoryText, setNewCategoryText] = useState("");
 
-    return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-          <div className="p-6 border-b flex justify-between items-center">
-            <h2 className="text-2xl font-bold text-gray-800">Category to PM Mapping Manager</h2>
-            <button onClick={() => setShowCategoryManager(false)} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="p-6 border-b flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-800">
+            Category to PM Mapping Manager
+          </h2>
+          <button
+            onClick={() => setShowCategoryManager(false)}
+            className="text-gray-500 hover:text-gray-700 text-2xl"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="p-6 space-y-6 overflow-y-auto flex-1">
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <h3 className="font-semibold text-blue-900 mb-3">Add New Mapping</h3>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block">Category Code</label>
+                <select
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                >
+                  <option value="">Select Category</option>
+                  {allCategories.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block">PM Name</label>
+                <input
+                  type="text"
+                  placeholder="PM Name"
+                  value={newPM}
+                  onChange={(e) => setNewPM(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block">Department</label>
+                <input
+                  type="text"
+                  placeholder="Department (optional)"
+                  value={newDepartment}
+                  onChange={(e) => setNewDepartment(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-600 mb-1 block">Category Description</label>
+                <input
+                  type="text"
+                  placeholder="Category description (optional)"
+                  value={newCategoryText}
+                  onChange={(e) => setNewCategoryText(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                if (newCategory && newPM) {
+                  addCategoryMapping(newCategory, newPM, newDepartment, newCategoryText);
+                  setNewCategory("");
+                  setNewPM("");
+                  setNewDepartment("");
+                  setNewCategoryText("");
+                }
+              }}
+              disabled={!newCategory || !newPM}
+              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              Add Mapping
+            </button>
           </div>
 
-          <div className="p-6 space-y-6 overflow-y-auto flex-1">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-blue-900 mb-3">Add New Mapping</h3>
-              <div className="grid grid-cols-2 gap-3 mb-3">
-                <div>
-                  <label className="text-xs text-gray-600 mb-1 block">Category Code</label>
-                  <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+          {unmatchedCategories.length > 0 && (
+            <div className="bg-red-50 p-4 rounded-lg">
+              <h3 className="font-semibold text-red-900 mb-2">
+                Unmatched Categories ({unmatchedCategories.length})
+              </h3>
+              <p className="text-sm text-red-800 mb-3">
+                These categories don't have PM assignments:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {unmatchedCategories.map((cat) => (
+                  <span
+                    key={cat}
+                    className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm"
                   >
-                    <option value="">Select Category</option>
-                    {allCategories.map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-600 mb-1 block">PM Name</label>
-                  <input
-                    type="text"
-                    placeholder="PM Name"
-                    value={newPM}
-                    onChange={(e) => setNewPM(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-600 mb-1 block">Department</label>
-                  <input
-                    type="text"
-                    placeholder="Department (optional)"
-                    value={newDepartment}
-                    onChange={(e) => setNewDepartment(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-600 mb-1 block">Category Description</label>
-                  <input
-                    type="text"
-                    placeholder="Category description (optional)"
-                    value={newCategoryText}
-                    onChange={(e) => setNewCategoryText(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  />
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  if (newCategory && newPM) {
-                    addCategoryMapping(newCategory, newPM, newDepartment, newCategoryText);
-                    setNewCategory(""); setNewPM(""); setNewDepartment(""); setNewCategoryText("");
-                  }
-                }}
-                disabled={!newCategory || !newPM}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-              >
-                Add Mapping
-              </button>
-            </div>
-
-            {unmatchedCategories.length > 0 && (
-              <div className="bg-red-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-red-900 mb-2">Unmatched Categories ({unmatchedCategories.length})</h3>
-                <p className="text-sm text-red-800 mb-3">These categories don't have PM assignments:</p>
-                <div className="flex flex-wrap gap-2">
-                  {unmatchedCategories.map((cat) => (
-                    <span key={cat} className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm">
-                      {cat}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div>
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="font-semibold text-gray-800">Current Mappings ({categoryMapping.length})</h3>
-                <button onClick={exportCategoryMapping} className="text-sm px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700">
-                  Export JSON
-                </button>
-              </div>
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {categoryMapping.map((m, idx) => (
-                  <div key={idx} className="flex items-start justify-between p-4 bg-gray-50 rounded-lg border">
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-gray-900">{m.category}</span>
-                        <span className="text-gray-400">→</span>
-                        <span className="font-semibold text-blue-600">{m.pm}</span>
-                      </div>
-                      {m.category_text && <p className="text-sm text-gray-600">{m.category_text}</p>}
-                      {m.department && <p className="text-xs text-gray-500">Department: {m.department}</p>}
-                    </div>
-                    <button onClick={() => removeCategoryMapping(m.category)} className="text-red-600 hover:text-red-800 text-sm ml-4">
-                      Remove
-                    </button>
-                  </div>
+                    {cat}
+                  </span>
                 ))}
               </div>
             </div>
+          )}
 
-            <div>
-              <h3 className="font-semibold text-gray-800 mb-3">All Categories in Data ({allCategories.length})</h3>
-              <div className="flex flex-wrap gap-2">
-                {allCategories.map((cat) => {
-                  const hasMapping = categoryMapping.some(
-                    (m) => m.category.trim().toUpperCase() === cat.trim().toUpperCase()
-                  );
-                  return (
-                    <span
-                      key={cat}
-                      className={`px-3 py-1 rounded-full text-sm ${hasMapping ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}
-                    >
-                      {cat} {hasMapping && "✓"}
-                    </span>
-                  );
-                })}
-              </div>
+          <div>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-semibold text-gray-800">
+                Current Mappings ({categoryMapping.length})
+              </h3>
+              <button
+                onClick={exportCategoryMapping}
+                className="text-sm px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700"
+              >
+                Export JSON
+              </button>
+            </div>
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {categoryMapping.map((m, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-start justify-between p-4 bg-gray-50 rounded-lg border"
+                >
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-gray-900">{m.category}</span>
+                      <span className="text-gray-400">→</span>
+                      <span className="font-semibold text-blue-600">{m.pm}</span>
+                    </div>
+                    {m.category_text && (
+                      <p className="text-sm text-gray-600">{m.category_text}</p>
+                    )}
+                    {m.department && (
+                      <p className="text-xs text-gray-500">
+                        Department: {m.department}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => removeCategoryMapping(m.category)}
+                    className="text-red-600 hover:text-red-800 text-sm ml-4"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="font-semibold text-gray-800 mb-3">
+              All Categories in Data ({allCategories.length})
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {allCategories.map((cat) => {
+                const hasMapping = categoryMapping.some(
+                  (m) => m.category.trim().toUpperCase() === cat.trim().toUpperCase()
+                );
+                return (
+                  <span
+                    key={cat}
+                    className={`px-3 py-1 rounded-full text-sm ${
+                      hasMapping ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
+                    {cat} {hasMapping && "✓"}
+                  </span>
+                );
+              })}
             </div>
           </div>
         </div>
       </div>
-    );
-  };
+    </div>
+  );
+};
+
 
   /* ------------------------ SharePoint data loader ---------------------- */
   const loadFromSharePoint = async (silent = false) => {
@@ -705,26 +761,44 @@ const App = () => {
     : [];
 
   const filteredAndSortedData = useMemo(() => {
-    let rows = currentData;
+  let rows = currentData;
 
-    if (searchTerm) {
-      const q = searchTerm.toLowerCase();
-      rows = rows.filter((r) =>
-        Object.values(r).some((v) => String(v ?? "").toLowerCase().includes(q))
-      );
-    }
+  // 1) Location filter (matches "Location" or "Repair Location")
+  if (locationFilter) {
+    rows = rows.filter((r) => {
+      const loc = r["Location"] || r["Repair Location"];
+      return String(loc || "").trim() === locationFilter;
+    });
+  }
 
-    if (sortConfig.key) {
-      rows = [...rows].sort((a, b) => {
-        const av = a[sortConfig.key];
-        const bv = b[sortConfig.key];
-        if (av === bv) return 0;
-        return (av > bv ? 1 : -1) * (sortConfig.direction === "asc" ? 1 : -1);
-      });
-    }
+  // 2) PM filter (useful on Combined tab; harmless elsewhere)
+  if (pmFilter) {
+    rows = rows.filter((r) => {
+      const assigned = String(r["Assigned To"] || "").trim();
+      return pmFilter === "__unassigned__" ? assigned === "" : assigned === pmFilter;
+    });
+  }
 
-    return rows;
-  }, [currentData, searchTerm, sortConfig]);
+  // 3) Search
+  if (searchTerm) {
+    const q = searchTerm.toLowerCase();
+    rows = rows.filter((r) =>
+      Object.values(r).some((v) => String(v ?? "").toLowerCase().includes(q))
+    );
+  }
+
+  // 4) Sort
+  if (sortConfig.key) {
+    rows = [...rows].sort((a, b) => {
+      const av = a[sortConfig.key];
+      const bv = b[sortConfig.key];
+      if (av === bv) return 0;
+      return (av > bv ? 1 : -1) * (sortConfig.direction === "asc" ? 1 : -1);
+    });
+  }
+
+  return rows;
+}, [currentData, locationFilter, pmFilter, searchTerm, sortConfig]);
 
   const handleSort = (key) =>
     setSortConfig((prev) => ({
