@@ -969,10 +969,10 @@ const RepairTrackerSheet = () => {
                 className="hidden"
                 disabled={loading}
               />
-            </label>
-            
-            END OF HIDDEN UPLOAD BUTTONS */}
-           </div>  {/* ← ADD THIS CLOSING DIV TAG */}
+           </label>
+
+END OF HIDDEN UPLOAD BUTTONS */}
+          </div>
         </div>
       </div>
 

@@ -972,7 +972,7 @@ const RepairTrackerSheet = () => {
             </label>
             
             END OF HIDDEN UPLOAD BUTTONS */}
-          </div>
+           </div>  {/* ← ADD THIS CLOSING DIV TAG */}
         </div>
       </div>
 
