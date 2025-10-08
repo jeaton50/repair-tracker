@@ -1,18 +1,29 @@
-// src/authConfig.js
-export const msalConfig = {
+/export const msalConfig = {
   auth: {
     clientId: "5764301a-9d69-4b4e-8bb6-83dbd4215e24",
     authority: "https://login.microsoftonline.com/b958ba39-da13-4553-a009-35b1649f44eb",
     redirectUri: import.meta.env.DEV
       ? "http://localhost:5173/repair-tracker/"
-      : "https://jeaton50.github.io/repair-tracker/" // <-- your real prod URL
-  }
+      : "https://jeaton50.github.io/repair-tracker/",
+  },
+  cache: { cacheLocation: "localStorage", storeAuthStateInCookie: false },
 };
 
 export const loginRequest = {
-  scopes: ["openid","profile","email","offline_access","User.Read","Files.Read"]
+  scopes: [
+    "openid","profile","email","offline_access",
+    "User.Read",
+    "Files.Read.All"   // <-- NEW: lets users read SharePoint libraries they can access
+  ],
 };
 
+// Put your SharePoint coordinates here (or in .env, see below)
 export const graphConfig = {
-  folderPath: import.meta.env.VITE_RT_FOLDER ?? "RepairTracker",
+  spHostname: import.meta.env.VITE_SP_HOSTNAME ?? "rentexinc.sharepoint.com",
+  spSitePath: import.meta.env.VITE_SP_SITEPATH ?? "/sites/ProductManagers",
+  spBasePath: import.meta.env.VITE_SP_BASE    ?? "General/Repairs/RepairTracker",
+  // file names (use your real names)
+  ticketsFile:  import.meta.env.VITE_SP_TICKETS  ?? "ticket_list.xlsx",
+  reportsFile:  import.meta.env.VITE_SP_REPORTS  ?? "repair_report.xlsx",
+  mappingFile:  import.meta.env.VITE_SP_MAPPING  ?? "category_mapping.json",
 };

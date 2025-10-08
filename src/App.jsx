@@ -1,18 +1,20 @@
-// src/App.jsx (or wherever this component lives)
-
+// src/App.jsx
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Client } from "@microsoft/microsoft-graph-client";
-import { loginRequest, graphConfig } from "./authConfig";
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Search, Download, ChevronDown, ChevronUp, Upload, FileSpreadsheet, RefreshCw, Cloud } from 'lucide-react';
-import { db } from './firebase';
-import { doc, setDoc, onSnapshot, serverTimestamp, deleteDoc } from 'firebase/firestore';
-import { PublicClientApplication } from '@azure/msal-browser';
-import { msalConfig } from "./authConfig";
-import OneDriveService from './oneDriveService';
+import { PublicClientApplication } from "@azure/msal-browser";
+import { msalConfig, loginRequest, graphConfig } from "./authConfig";
+import OneDriveService from "./oneDriveService";
+import {
+  Search, Download, ChevronDown, ChevronUp,
+  Upload, FileSpreadsheet, RefreshCw, Cloud
+} from "lucide-react";
+
+import { db } from "./firebase";
+import { doc, setDoc, onSnapshot, serverTimestamp, deleteDoc } from "firebase/firestore";
 
 const msalInstance = new PublicClientApplication(msalConfig);
 
-// --- ✅ put the helper RIGHT HERE (top-level, not inside JSX/components) ---
+/* ----------------------------- Auth helper ----------------------------- */
 async function ensureAccessToken() {
   let account = msalInstance.getAllAccounts()[0];
   if (!account) {
@@ -28,104 +30,87 @@ async function ensureAccessToken() {
   }
 }
 
-async function debugListFolder(graph, folderPath) {
-  const encodePath = (p) => p.split("/").map(encodeURIComponent).join("/");
-  try {
-    const encoded = encodePath(folderPath || "RepairTracker");
-    const resp = await graph.api(`/me/drive/root:/${encoded}:/children`).get();
-    console.log("DEBUG children of", folderPath, resp.value.map(v => ({
-      name: v.name, id: v.id, isFolder: !!v.folder
-    })));
-  } catch (e) {
-    console.error("DEBUG failed to list folder:", folderPath, e);
-  }
-}
-
-/* ---------------- Row Editor (unchanged except for imports) ---------------- */
-
-const SHARED_URL =
-  "https://rentexinc-my.sharepoint.com/:f:/g/personal/justin_eaton_rentex_com/EksOqWxAKtVCjk5AnQaOasMBMow-ZyhwkFQ26M-mYyEcPw?e=EbTzEP";
-
+/* ----------------------------- Row Editor ------------------------------ */
 const RowEditor = ({ row, rowIndex, onClose }) => {
-  const [meetingNote, setMeetingNote] = useState(row['Meeting Note'] || '');
-  const [followUp, setFollowUp] = useState(row['Requires Follow Up'] || '');
+  const [meetingNote, setMeetingNote] = useState(row["Meeting Note"] || "");
+  const [followUp, setFollowUp] = useState(row["Requires Follow Up"] || "");
   const [lastSaved, setLastSaved] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const saveTimeoutRef = useRef(null);
-  const barcode = row['Barcode#'];
+  const barcode = row["Barcode#"];
 
-  // Auto-save
+  // Auto-save to Firebase
   useEffect(() => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-
     saveTimeoutRef.current = setTimeout(async () => {
       if (!barcode) return;
       setIsSaving(true);
       try {
-        const docRef = doc(db, 'repairNotes', barcode);
+        const docRef = doc(db, "repairNotes", barcode);
         await setDoc(
           docRef,
           { barcode, meetingNote, requiresFollowUp: followUp, lastUpdated: serverTimestamp() },
           { merge: true }
         );
         setLastSaved(new Date());
-      } catch (error) {
-        console.error('Auto-save error:', error);
-        alert('Failed to save. Check your Firebase connection.');
+      } catch (e) {
+        console.error("Auto-save error:", e);
+        alert("Failed to save. Check your Firebase connection.");
       } finally {
         setIsSaving(false);
       }
     }, 1000);
-
-    return () => {
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    };
+    return () => saveTimeoutRef.current && clearTimeout(saveTimeoutRef.current);
   }, [meetingNote, followUp, barcode]);
 
-  // Real-time sync
+  // Realtime sync from Firebase
   useEffect(() => {
     if (!barcode) return;
-    const docRef = doc(db, 'repairNotes', barcode);
-    const unsubscribe = onSnapshot(
+    const docRef = doc(db, "repairNotes", barcode);
+    const unsub = onSnapshot(
       docRef,
-      (snapshot) => {
-        if (snapshot.exists()) {
-          const data = snapshot.data();
-          if (document.activeElement?.name !== 'meetingNote') setMeetingNote(data.meetingNote || '');
-          if (document.activeElement?.name !== 'followUp') setFollowUp(data.requiresFollowUp || '');
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (document.activeElement?.name !== "meetingNote") setMeetingNote(data.meetingNote || "");
+          if (document.activeElement?.name !== "followUp") setFollowUp(data.requiresFollowUp || "");
         }
       },
-      (error) => console.error('Real-time sync error:', error)
+      (err) => console.error("Realtime sync error:", err)
     );
-    return () => unsubscribe();
+    return () => unsub();
   }, [barcode]);
 
   const handleClearAll = () => {
-    if (window.confirm('Clear all notes for this item?')) {
-      setMeetingNote(''); setFollowUp('');
+    if (window.confirm("Clear all notes for this item?")) {
+      setMeetingNote("");
+      setFollowUp("");
     }
   };
 
   const handleDeleteFromDatabase = async () => {
-    if (!window.confirm('Permanently delete all notes for this item from the database?')) return;
+    if (!window.confirm("Permanently delete all notes for this item from the database?")) return;
     try {
-      const docRef = doc(db, 'repairNotes', barcode);
+      const docRef = doc(db, "repairNotes", barcode);
       await deleteDoc(docRef);
-      setMeetingNote(''); setFollowUp('');
-      alert('Notes deleted from database');
-    } catch (error) {
-      console.error('Delete error:', error);
-      alert('Failed to delete. Please try again.');
+      setMeetingNote("");
+      setFollowUp("");
+      alert("Notes deleted from database");
+    } catch (e) {
+      console.error("Delete error:", e);
+      alert("Failed to delete. Please try again.");
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+        <div className="p-6 border-b flex justify-between items-center">
           <div>
             <h2 className="text-xl font-bold text-gray-800">Edit Repair Item</h2>
-            <p className="text-sm text-gray-500 mt-1">{row['Barcode#']} - {row['Equipment']}</p>
+            <p className="text-sm text-gray-500 mt-1">
+              {row["Barcode#"]} - {row["Equipment"]}
+            </p>
             {isSaving && (
               <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
                 <span className="inline-block animate-spin">⟳</span> Saving...
@@ -142,7 +127,13 @@ const RowEditor = ({ row, rowIndex, onClose }) => {
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-sm font-semibold text-gray-700">Meeting Note</label>
-              <button type="button" onClick={() => setMeetingNote('')} className="text-xs px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50">Clear</button>
+              <button
+                type="button"
+                onClick={() => setMeetingNote("")}
+                className="text-xs px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
+              >
+                Clear
+              </button>
             </div>
             <textarea
               name="meetingNote"
@@ -157,8 +148,20 @@ const RowEditor = ({ row, rowIndex, onClose }) => {
             <div className="flex items-center justify-between mb-2">
               <label className="block text-sm font-semibold text-gray-700">Requires Follow Up</label>
               <div className="flex gap-2">
-                <button type="button" onClick={() => setFollowUp(meetingNote)} className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50">Copy from Meeting Note</button>
-                <button type="button" onClick={() => setFollowUp('')} className="text-xs px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50">Clear</button>
+                <button
+                  type="button"
+                  onClick={() => setFollowUp(meetingNote)}
+                  className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50"
+                >
+                  Copy from Meeting Note
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFollowUp("")}
+                  className="text-xs px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
+                >
+                  Clear
+                </button>
               </div>
             </div>
             <textarea
@@ -171,560 +174,267 @@ const RowEditor = ({ row, rowIndex, onClose }) => {
           </div>
 
           <div className="p-4 bg-gray-50 rounded-lg text-sm space-y-2">
-            <div><span className="font-semibold text-gray-700">Damage:</span> {row['Damage Description']}</div>
-            <div><span className="font-semibold text-gray-700">Ticket Notes:</span> {row['Ticket Description']}</div>
-            <div><span className="font-semibold text-gray-700">Reason:</span> {row['Repair Reason']}</div>
+            <div><span className="font-semibold text-gray-700">Damage:</span> {row["Damage Description"]}</div>
+            <div><span className="font-semibold text-gray-700">Ticket Notes:</span> {row["Ticket Description"]}</div>
+            <div><span className="font-semibold text-gray-700">Reason:</span> {row["Repair Reason"]}</div>
           </div>
         </div>
 
-        <div className="p-6 border-t border-gray-200 flex justify-between">
+        <div className="p-6 border-t flex justify-between">
           <div className="flex gap-2">
-            <button onClick={handleClearAll} className="px-6 py-2 text-orange-600 bg-orange-50 border border-orange-300 rounded-lg hover:bg-orange-100">Clear All Notes</button>
-            <button onClick={handleDeleteFromDatabase} className="px-6 py-2 text-red-600 bg-red-50 border border-red-300 rounded-lg hover:bg-red-100">Delete from Database</button>
+            <button
+              onClick={handleClearAll}
+              className="px-6 py-2 text-orange-600 bg-orange-50 border border-orange-300 rounded-lg hover:bg-orange-100"
+            >
+              Clear All Notes
+            </button>
+            <button
+              onClick={handleDeleteFromDatabase}
+              className="px-6 py-2 text-red-600 bg-red-50 border border-red-300 rounded-lg hover:bg-red-100"
+            >
+              Delete from Database
+            </button>
           </div>
-          <button onClick={onClose} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Close</button>
+          <button
+            onClick={onClose}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>
   );
 };
 
-/* --------------------------- Main Component --------------------------- */
+/* ------------------------------ Main App ------------------------------- */
+const App = () => {
+  // Core state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [accessToken, setAccessToken] = useState(null);
+  const [userName, setUserName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [lastSync, setLastSync] = useState(null);
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
-const RepairTrackerSheet = () => {
-  const [activeTab, setActiveTab] = useState('combined');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [locationFilter, setLocationFilter] = useState('');
-  const [pmFilter, setPmFilter] = useState('');
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  // Data sets
   const [ticketData, setTicketData] = useState([]);
   const [reportData, setReportData] = useState([]);
   const [categoryMapping, setCategoryMapping] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const wrapText = true;
-  const [showCategoryManager, setShowCategoryManager] = useState(false);
-  const [unmatchedCategories, setUnmatchedCategories] = useState([]);
 
-  const [editingRow, setEditingRow] = useState(null);
-  const [editingRowIndex, setEditingRowIndex] = useState(null);
-
+  // Notes sync
   const [combinedDataWithNotes, setCombinedDataWithNotes] = useState([]);
   const [notesMap, setNotesMap] = useState(new Map());
   const notesListenersRef = useRef(new Map());
 
-  // Auth / Graph
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [accessToken, setAccessToken] = useState(null);
-  const [userName, setUserName] = useState('');
-  const [lastSync, setLastSync] = useState(null);
-  const [autoRefresh, setAutoRefresh] = useState(true);
-  const [msalInitialized, setMsalInitialized] = useState(false);
+  // UI state
+  const [activeTab, setActiveTab] = useState("combined");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [unmatchedCategories, setUnmatchedCategories] = useState([]);
+  const [editingRow, setEditingRow] = useState(null);
+  const [editingRowIndex, setEditingRowIndex] = useState(null);
 
-  // Initialize MSAL
-  useEffect(() => {
-    const initializeMsal = async () => {
-      try {
-        await msalInstance.initialize();
-        setMsalInitialized(true);
-      } catch (error) {
-        console.error('MSAL initialization failed:', error);
-      }
-    };
-    initializeMsal();
-  }, []);
-
-  // Silent sign-in if possible
-  useEffect(() => {
-    if (!msalInitialized) return;
-    const checkAuth = async () => {
-      const accounts = msalInstance.getAllAccounts();
-      if (accounts.length > 0) {
-        try {
-          const response = await msalInstance.acquireTokenSilent({ ...loginRequest, account: accounts[0] });
-          setAccessToken(response.accessToken);
-          setIsAuthenticated(true);
-          setUserName(accounts[0].name);
-        } catch (error) {
-          console.error('Silent token acquisition failed:', error);
-        }
-      }
-    };
-    checkAuth();
-  }, [msalInitialized]);
-
-  // Auto-load after sign-in
-  useEffect(() => {
-    if (isAuthenticated && accessToken) {
-      loadFromOneDrive(true);
+  /* ----------------------- Helpers / formatters ------------------------ */
+  const formatCell = (value) => {
+    if (value == null) return "";
+    const str = String(value);
+    if (str.includes("T") && str.includes("Z")) {
+      const d = new Date(str);
+      if (!isNaN(d.getTime())) return d.toLocaleDateString();
     }
-  }, [isAuthenticated, accessToken]);
-
-  // Optional periodic refresh
-  // Auto-refresh every 5 minutes while authenticated
-useEffect(() => {
-  if (!autoRefresh || !isAuthenticated) return;
-  const interval = setInterval(() => loadFromOneDrive(true), 5 * 60 * 1000);
-  return () => clearInterval(interval);
-}, [autoRefresh, isAuthenticated]); // note: no accessToken in deps
-
-// Login (don’t store token in state; fetch fresh inside loadFromOneDrive)
-const handleLogin = async () => {
-  try {
-    await msalInstance.loginPopup(loginRequest);
-    const account = msalInstance.getAllAccounts()[0];
-    setIsAuthenticated(true);
-    setUserName(account?.name || "");
-    await loadFromOneDrive(false); // will call ensureAccessToken() internally
-  } catch (err) {
-    console.error("Login failed:", err);
-    alert("Failed to sign in to Microsoft. Please try again.");
-  }
-};
-
-
-  const handleLogout = () => {
-    const account = msalInstance.getAllAccounts()[0];
-    msalInstance.logoutPopup({ account });
-    setIsAuthenticated(false);
-    setAccessToken(null);
-    setUserName('');
-    setTicketData([]); setReportData([]); setCategoryMapping([]);
+    const num = parseFloat(str.replace(/,/g, ""));
+    if (!isNaN(num) && /^[\d,.\s-]+$/.test(str)) {
+      return Number.isInteger(num) ? String(Math.trunc(num)) : String(num);
+    }
+    return str;
   };
 
-  // Build Graph client from token
-  const getGraphClient = () => Client.init({ authProvider: (done) => done(null, accessToken) });
-
-// Load from OneDrive/SharePoint
-const loadFromOneDrive = async (silent = false) => {
-  if (!silent) setLoading(true);
-  try {
-    // 1) Always fetch a fresh token right before calling Graph
-    const token = await ensureAccessToken();
-    if (!token) throw new Error("No access token returned");
-
-    // 2) Build a Graph client from the token
-    const graph = Client.init({
-      authProvider: (done) => done(null, token),
-    });
-
-    // 3) Create the OneDrive service (folderPath from config, default to "RepairTracker")
-    const ods = new OneDriveService(graph, graphConfig.folderPath || "RepairTracker");
-
-    // (Optional) quick one-time probe to verify the folder is resolvable
-    // await debugListFolder(graph, graphConfig.folderPath || "RepairTracker");
-
-    // 4) Helpers that try multiple filenames (real names first, then canonical)
-    const tryExcel = async (names) => {
-      for (const n of names) {
-        try {
-          return await ods.readExcelFileShared(n);
-        } catch (e) {
-          // If it's a not-found, try the next candidate
-          if (e?.statusCode === 404 || String(e?.message || "").includes("not found")) continue;
-          // Log other errors but keep trying next name
-          console.warn("Excel read error for", n, e);
-        }
-      }
-      return [];
-    };
-
-    const tryJson = async (names) => {
-      for (const n of names) {
-        try {
-          return await ods.readJsonFileShared(n);
-        } catch (e) {
-          if (e?.statusCode === 404 || String(e?.message || "").includes("not found")) continue;
-          console.warn("JSON read error for", n, e);
-        }
-      }
-      return [];
-    };
-
-    // 5) Load all three in parallel (adjust filenames to match your drive)
-    const [tickets, reports, mapping] = await Promise.all([
-      tryExcel(["repair ticket list example.xlsx", "ticket_list.xlsx"]),
-      tryExcel(["rtp repair report example.xlsx", "repair_report.xlsx"]),
-      tryJson(["cleaned-pm-mapping (2).json", "category_mapping.json"]),
-    ]);
-
-    // 6) Update state
-    setTicketData(tickets);
-    setReportData(reports);
-    setCategoryMapping(mapping);
-    setLastSync(new Date());
-
-    if (!silent) {
-      alert(
-        `Loaded from OneDrive:\n` +
-        `${tickets.length} tickets\n` +
-        `${reports.length} reports\n` +
-        `${mapping.length} category mappings`
-      );
-    }
-  } catch (e) {
-    console.error("OneDrive load failed:", e);
-    if (!silent) alert(e.message || "Failed to load from OneDrive.");
-  } finally {
-    if (!silent) setLoading(false);
-  }
-};
-
-
-
-  /* ---------------------- XLSX loader for manual uploads ---------------------- */
-
-  useEffect(() => {
-    const loadXLSX = async () => {
-      if (typeof XLSX !== 'undefined') return;
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-      return new Promise((resolve, reject) => {
-        script.onload = resolve;
-        script.onerror = reject;
-        document.head.appendChild(script);
-      });
-    };
-    loadXLSX().catch(err => console.error('Failed to load XLSX:', err));
-  }, []);
-
-  const handleFileUpload = async (e, type) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setLoading(true);
-    try {
-      if (type === 'mapping') {
-        const text = await file.text();
-        const jsonData = JSON.parse(text);
-        setCategoryMapping(jsonData);
-        alert(`Successfully loaded ${Array.isArray(jsonData) ? jsonData.length : Object.keys(jsonData || {}).length} category mappings`);
-        setLoading(false);
-        return;
-      }
-
-      if (typeof XLSX === 'undefined') {
-        alert('Please wait for the library to load and try again');
-        setLoading(false);
-        return;
-      }
-
-      const arrayBuffer = await file.arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
-      const rawData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1, defval: "", raw: false });
-
-      if (rawData.length < 2) {
-        alert('File appears to be empty or has incorrect format');
-        setLoading(false);
-        return;
-      }
-
-      const headers = rawData[1].map(h => String(h || '').trim()).filter(h => h);
-      const dataRows = rawData.slice(2);
-
-      const data = dataRows
-        .filter(row => row && row.some(cell => cell !== "" && cell !== null))
-        .map(row => {
-          const obj = {};
-          headers.forEach((header, index) => {
-            obj[header] = row[index] !== undefined && row[index] !== null ? String(row[index]) : "";
-          });
-          return obj;
-        });
-
-      if (type === 'tickets') setTicketData(data);
-      else setReportData(data);
-
-      alert(`Successfully loaded ${data.length} records from ${file.name}`);
-    } catch (err) {
-      alert(`Error reading file: ${err.message}`);
-      console.error('File upload error:', err);
-    } finally {
-      setLoading(false);
-    }
+  const calculateAge = (dateStr) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "";
+    const days = Math.round((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
+    return days >= 0 ? days : "";
   };
 
-  /* ------------------------------ Merge logic ------------------------------ */
-
+  /* ---------------------- Build combined base data --------------------- */
   const baseCombinedData = useMemo(() => {
     if (reportData.length === 0) return [];
 
-    const normalizeBarcode = (barcode) => (!barcode ? '' : String(barcode).trim().toUpperCase());
-
+    const norm = (s) => (s ? String(s).trim().toUpperCase() : "");
     const ticketMap = new Map();
-    ticketData.forEach(ticket => {
-      const barcode = normalizeBarcode(ticket['Barcode']);
-      if (barcode) ticketMap.set(barcode, ticket);
+    ticketData.forEach((t) => {
+      const bc = norm(t["Barcode"]);
+      if (bc) ticketMap.set(bc, t);
     });
 
     const categoryToPM = new Map();
-    categoryMapping.forEach(item => {
-      if (item.category && item.pm) {
-        categoryToPM.set(item.category.trim().toUpperCase(), {
-          pm: item.pm,
-          department: item.department || '',
-          categoryText: item.category_text || ''
+    categoryMapping.forEach((m) => {
+      const cat = m.category?.trim();
+      if (cat) {
+        categoryToPM.set(cat.toUpperCase(), {
+          pm: m.pm || "",
+          department: m.department || "",
+          category_text: m.category_text || "",
         });
       }
     });
 
-    const unmatchedSet = new Set();
+    const unmatched = new Set();
 
-    const calculateAge = (dateStr) => {
-      if (!dateStr) return '';
-      try {
-        const date = new Date(dateStr);
-        const today = new Date();
-        const diffDays = Math.ceil(Math.abs(today - date) / (1000 * 60 * 60 * 24));
-        return diffDays;
-      } catch { return ''; }
-    };
+    const combined = reportData.map((r) => {
+      const bc = norm(r["Barcode#"]);
+      const ticket = ticketMap.get(bc) || {};
+      const cat = (r["Category"] || "").trim();
+      const mapping = categoryToPM.get(cat.toUpperCase());
+      const assignedPM = mapping?.pm || "";
 
-    const result = reportData.map(report => {
-      const reportBarcode = normalizeBarcode(report['Barcode#']);
-      const ticket = ticketMap.get(reportBarcode) || {};
-      const ticketNotes = ticket['Notes'] || '';
-
-      const category = (report['Category'] || '').trim();
-      const mappingInfo = categoryToPM.get(category.toUpperCase());
-      const assignedPM = mappingInfo ? mappingInfo.pm : '';
-
-      if (category && !assignedPM) unmatchedSet.add(category);
+      if (cat && !assignedPM) unmatched.add(cat);
 
       return {
-        'Meeting Note': '',
-        'Requires Follow Up': '',
-        'Assigned To': assignedPM,
-        'Location': report['Repair Location'] || ticket['Location'] || '',
-        'Repair Ticket': report['Ticket'] || '',
-        'Asset Repair Age': calculateAge(report['Date In']),
-        'Barcode#': report['Barcode#'] || ticket['Barcode'] || '',
-        'Equipment': `(${report['Equipment']}) - ${report['Description']}`,
-        'Damage Description': report['Notes'] || '',
-        'Ticket Description': ticketNotes,
-        'Repair Reason': report['Repair Reason'] || '',
-        'Last Order#': report['Last Order#'] || ticket['Order# to Bill'] || '',
-        'Reference#': report['Reference#'] || '',
-        'Customer': report['Customer'] || ticket['Customer'] || '',
-        'Customer Title': report['Customer Title'] || '',
-        'Repair Cost': report['Repair Cost'] || '0',
-        'Date In': report['Date In'] || ticket['Creation Date'] || '',
-        'Department': report['Department'] || '',
-        'Category': report['Category'] || '',
-        'Billable': ticket['Billable'] || report['Billable'] || '',
-        'Created By': ticket['Created By'] || report['User In'] || '',
-        'Repair Price': report['Repair Price'] || '0',
-        'Repair Vendor': report['Repair Vendor'] || '',
-        '_TicketMatched': Object.keys(ticket).length > 0 ? 'Yes' : 'No'
+        "Meeting Note": "",
+        "Requires Follow Up": "",
+        "Assigned To": assignedPM,
+        "Location": r["Repair Location"] || ticket["Location"] || "",
+        "Repair Ticket": r["Ticket"] || "",
+        "Asset Repair Age": calculateAge(r["Date In"]),
+        "Barcode#": r["Barcode#"] || ticket["Barcode"] || "",
+        "Equipment": `(${r["Equipment"] || ""}) - ${r["Description"] || ""}`,
+        "Damage Description": r["Notes"] || "",
+        "Ticket Description": ticket["Notes"] || "",
+        "Repair Reason": r["Repair Reason"] || "",
+        "Last Order#": r["Last Order#"] || ticket["Order# to Bill"] || "",
+        "Reference#": r["Reference#"] || "",
+        "Customer": r["Customer"] || ticket["Customer"] || "",
+        "Customer Title": r["Customer Title"] || "",
+        "Repair Cost": r["Repair Cost"] || "0",
+        "Date In": r["Date In"] || ticket["Creation Date"] || "",
+        "Department": r["Department"] || "",
+        "Category": r["Category"] || "",
+        "Billable": ticket["Billable"] || r["Billable"] || "",
+        "Created By": ticket["Created By"] || r["User In"] || "",
+        "Repair Price": r["Repair Price"] || "0",
+        "Repair Vendor": r["Repair Vendor"] || "",
+        "_TicketMatched": Object.keys(ticket).length > 0 ? "Yes" : "No",
       };
     });
 
-    setUnmatchedCategories(Array.from(unmatchedSet).sort());
-    return result;
+    setUnmatchedCategories(Array.from(unmatched).sort());
+    return combined;
   }, [ticketData, reportData, categoryMapping]);
 
-  // Subscribe to Firestore notes for current rows and merge
+  /* ---------------------- Live notes merge (Firebase) ------------------- */
   useEffect(() => {
-    if (baseCombinedData.length === 0) { setCombinedDataWithNotes([]); return; }
+    if (baseCombinedData.length === 0) {
+      setCombinedDataWithNotes([]);
+      return;
+    }
 
-    const barcodes = baseCombinedData.map(row => row['Barcode#']).filter(Boolean);
-    if (barcodes.length === 0) { setCombinedDataWithNotes(baseCombinedData); return; }
+    const barcodes = baseCombinedData.map((row) => row["Barcode#"]).filter(Boolean);
 
-    // Clean up listeners for removed barcodes
-    notesListenersRef.current.forEach((unsubscribe, barcode) => {
-      if (!barcodes.includes(barcode)) { unsubscribe(); notesListenersRef.current.delete(barcode); }
+    // remove stale listeners
+    notesListenersRef.current.forEach((unsub, bc) => {
+      if (!barcodes.includes(bc)) {
+        unsub();
+        notesListenersRef.current.delete(bc);
+      }
     });
 
-    // New listeners
-    barcodes.forEach((barcode) => {
-      if (notesListenersRef.current.has(barcode)) return;
-      const docRef = doc(db, 'repairNotes', barcode);
-      const unsubscribe = onSnapshot(
+    // add listeners for new barcodes
+    barcodes.forEach((bc) => {
+      if (notesListenersRef.current.has(bc)) return;
+      const docRef = doc(db, "repairNotes", bc);
+      const unsub = onSnapshot(
         docRef,
-        (snapshot) => {
-          setNotesMap(prevMap => {
-            const newMap = new Map(prevMap);
-            if (snapshot.exists()) {
-              const data = snapshot.data();
-              newMap.set(barcode, { meetingNote: data.meetingNote || '', requiresFollowUp: data.requiresFollowUp || '' });
+        (snap) => {
+          setNotesMap((prev) => {
+            const next = new Map(prev);
+            if (snap.exists()) {
+              const d = snap.data();
+              next.set(bc, {
+                meetingNote: d.meetingNote || "",
+                requiresFollowUp: d.requiresFollowUp || "",
+              });
             } else {
-              newMap.set(barcode, { meetingNote: '', requiresFollowUp: '' });
+              next.set(bc, { meetingNote: "", requiresFollowUp: "" });
             }
-            return newMap;
+            return next;
           });
         },
-        (error) => console.error(`Error syncing barcode ${barcode}:`, error)
+        (e) => console.error(`Error syncing barcode ${bc}:`, e)
       );
-      notesListenersRef.current.set(barcode, unsubscribe);
+      notesListenersRef.current.set(bc, unsub);
     });
 
-    // Merge
-    const merged = baseCombinedData.map(row => {
-      const barcode = row['Barcode#'];
-      const notes = notesMap.get(barcode);
-      return { ...row, 'Meeting Note': notes?.meetingNote || '', 'Requires Follow Up': notes?.requiresFollowUp || '' };
+    // merge
+    const merged = baseCombinedData.map((row) => {
+      const bc = row["Barcode#"];
+      const n = notesMap.get(bc);
+      return {
+        ...row,
+        "Meeting Note": n?.meetingNote || "",
+        "Requires Follow Up": n?.requiresFollowUp || "",
+      };
     });
     setCombinedDataWithNotes(merged);
 
-    // Cleanup on unmount
     return () => {
-      notesListenersRef.current.forEach(unsubscribe => unsubscribe());
+      notesListenersRef.current.forEach((unsub) => unsub());
       notesListenersRef.current.clear();
     };
   }, [baseCombinedData, notesMap]);
 
-  const openRowEditor = (rowIndex) => {
-    setEditingRowIndex(rowIndex);
-    setEditingRow(filteredAndSortedData[rowIndex]);
-  };
-  const closeRowEditor = () => { setEditingRow(null); setEditingRowIndex(null); };
-
-  const getCurrentData = () => {
-    switch (activeTab) {
-      case 'tickets': return ticketData;
-      case 'reports': return reportData;
-      case 'combined': return combinedDataWithNotes;
-      case 'diagnostics': return [];
-      default: return [];
-    }
-  };
-
-  const currentData = getCurrentData();
-  const columns = currentData.length > 0 ? Object.keys(currentData[0]).filter(col => !col.startsWith('_')) : [];
-
-  const uniqueLocations = useMemo(() => {
-    const locations = new Set();
-    currentData.forEach(row => {
-      const location = row['Location'] || row['Repair Location'];
-      if (location && location.trim()) locations.add(location.trim());
-    });
-    return Array.from(locations).sort();
-  }, [currentData]);
-
-  const uniquePMs = useMemo(() => {
+  /* ------------------------ Category Manager helpers -------------------- */
+  const [allCategories, uniquePMs] = useMemo(() => {
+    const cats = new Set();
     const pms = new Set();
-    combinedDataWithNotes.forEach(row => {
-      const pm = row['Assigned To'];
+    reportData.forEach((r) => r["Category"] && cats.add(r["Category"].trim()));
+    combinedDataWithNotes.forEach((row) => {
+      const pm = row["Assigned To"];
       if (pm && pm.trim()) pms.add(pm.trim());
     });
-    return Array.from(pms).sort();
-  }, [combinedDataWithNotes]);
+    return [Array.from(cats).sort(), Array.from(pms).sort()];
+  }, [reportData, combinedDataWithNotes]);
 
-  const pmWorkload = useMemo(() => {
-    const workload = {};
-    combinedDataWithNotes.forEach(row => {
-      const pm = row['Assigned To'] || 'Unassigned';
-      if (!workload[pm]) workload[pm] = { count: 0, totalCost: 0, avgAge: 0, ages: [] };
-      workload[pm].count++;
-      const cost = parseFloat(row['Repair Cost']) || 0; workload[pm].totalCost += cost;
-      const age = parseInt(row['Asset Repair Age']) || 0; if (age > 0) workload[pm].ages.push(age);
+  const addCategoryMapping = (category, pm, department = "", categoryText = "") => {
+    setCategoryMapping((prev) => {
+      const copy = [...prev];
+      const i = copy.findIndex((m) => m.category.trim().toUpperCase() === category.trim().toUpperCase());
+      const entry = { category: category.trim(), pm: pm.trim(), department: department.trim(), category_text: categoryText.trim() };
+      if (i >= 0) copy[i] = entry; else copy.push(entry);
+      return copy;
     });
-    Object.keys(workload).forEach(pm => {
-      if (workload[pm].ages.length > 0) {
-        const sum = workload[pm].ages.reduce((a, b) => a + b, 0);
-        workload[pm].avgAge = Math.round(sum / workload[pm].ages.length);
-      }
-    });
-    return workload;
-  }, [combinedDataWithNotes]);
-
-  const allCategories = useMemo(() => {
-    const cats = new Set();
-    reportData.forEach(report => {
-      const category = report['Category'];
-      if (category && category.trim()) cats.add(category.trim());
-    });
-    return Array.from(cats).sort();
-  }, [reportData]);
-
-  const addCategoryMapping = (category, pm, department = '', categoryText = '') => {
-    const newMapping = [...categoryMapping];
-    const existingIndex = newMapping.findIndex(m => m.category.trim().toUpperCase() === category.trim().toUpperCase());
-    if (existingIndex >= 0) {
-      newMapping[existingIndex] = { category: category.trim(), pm: pm.trim(), department: department.trim(), category_text: categoryText.trim() };
-    } else {
-      newMapping.push({ category: category.trim(), pm: pm.trim(), department: department.trim(), category_text: categoryText.trim() });
-    }
-    setCategoryMapping(newMapping);
   };
 
   const removeCategoryMapping = (category) => {
-    setCategoryMapping(prev => prev.filter(m => m.category.trim().toUpperCase() !== category.trim().toUpperCase()));
+    setCategoryMapping((prev) =>
+      prev.filter((m) => m.category.trim().toUpperCase() !== category.trim().toUpperCase())
+    );
   };
 
   const exportCategoryMapping = () => {
     const json = JSON.stringify(categoryMapping, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
+    const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `category_mapping_${new Date().toISOString().split('T')[0]}.json`;
-    a.click(); URL.revokeObjectURL(url);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `category_mapping_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
-
-  const filteredAndSortedData = useMemo(() => {
-    let filtered = currentData;
-
-    if (locationFilter) filtered = filtered.filter(row => (row['Location'] || row['Repair Location']) === locationFilter);
-    if (pmFilter) {
-      filtered = filtered.filter(row => pmFilter === '__unassigned__' ? !row['Assigned To'] : row['Assigned To'] === pmFilter);
-    }
-    if (searchTerm) {
-      const s = searchTerm.toLowerCase();
-      filtered = filtered.filter(row => Object.values(row).some(val => String(val).toLowerCase().includes(s)));
-    }
-    if (sortConfig.key) {
-      filtered = [...filtered].sort((a, b) => {
-        const aVal = a[sortConfig.key]; const bVal = b[sortConfig.key];
-        if (aVal === bVal) return 0;
-        const cmp = aVal > bVal ? 1 : -1;
-        return sortConfig.direction === 'asc' ? cmp : -cmp;
-      });
-    }
-    return filtered;
-  }, [currentData, searchTerm, locationFilter, pmFilter, sortConfig]);
-
-  const handleSort = (key) => {
-    setSortConfig(prev => ({ key, direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc' }));
-  };
-
-  const formatCell = (value) => {
-    if (!value && value !== 0) return '';
-    const str = String(value);
-    if (str.includes('T') && str.includes('Z')) {
-      try {
-        const date = new Date(str);
-        if (!isNaN(date.getTime())) return date.toLocaleDateString();
-      } catch {}
-    }
-    const num = parseFloat(str.replace(/,/g, ''));
-    if (!isNaN(num) && str.match(/^[\d,\.]+$/)) return (num === Math.floor(num)) ? Math.floor(num).toString() : num.toString();
-    return str;
-  };
-
-  const exportToCSV = () => {
-    const headers = columns.join(',');
-    const rows = filteredAndSortedData.map(row =>
-      columns.map(col => `"${String(formatCell(row[col]) || '').replace(/"/g, '""')}"`).join(',')
-    );
-    const csv = [headers, ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `${activeTab}_export_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click(); URL.revokeObjectURL(url);
-  };
-
-  const hasData = ticketData.length > 0 || reportData.length > 0;
-
-  /* ------------------------- Category Manager modal ------------------------- */
 
   const CategoryManager = () => {
-    const [newCategory, setNewCategory] = useState('');
-    const [newPM, setNewPM] = useState('');
-    const [newDepartment, setNewDepartment] = useState('');
-    const [newCategoryText, setNewCategoryText] = useState('');
+    const [newCategory, setNewCategory] = useState("");
+    const [newPM, setNewPM] = useState("");
+    const [newDepartment, setNewDepartment] = useState("");
+    const [newCategoryText, setNewCategoryText] = useState("");
+
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-          <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+          <div className="p-6 border-b flex justify-between items-center">
             <h2 className="text-2xl font-bold text-gray-800">Category to PM Mapping Manager</h2>
             <button onClick={() => setShowCategoryManager(false)} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
           </div>
@@ -735,29 +445,53 @@ const loadFromOneDrive = async (silent = false) => {
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <div>
                   <label className="text-xs text-gray-600 mb-1 block">Category Code</label>
-                  <select value={newCategory} onChange={(e) => setNewCategory(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                  <select
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  >
                     <option value="">Select Category</option>
-                    {allCategories.map(cat => (<option key={cat} value={cat}>{cat}</option>))}
+                    {allCategories.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
                   <label className="text-xs text-gray-600 mb-1 block">PM Name</label>
-                  <input type="text" placeholder="PM Name" value={newPM} onChange={(e) => setNewPM(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                  <input
+                    type="text"
+                    placeholder="PM Name"
+                    value={newPM}
+                    onChange={(e) => setNewPM(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-gray-600 mb-1 block">Department</label>
-                  <input type="text" placeholder="Department (optional)" value={newDepartment} onChange={(e) => setNewDepartment(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                  <input
+                    type="text"
+                    placeholder="Department (optional)"
+                    value={newDepartment}
+                    onChange={(e) => setNewDepartment(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-gray-600 mb-1 block">Category Description</label>
-                  <input type="text" placeholder="Category description (optional)" value={newCategoryText} onChange={(e) => setNewCategoryText(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg" />
+                  <input
+                    type="text"
+                    placeholder="Category description (optional)"
+                    value={newCategoryText}
+                    onChange={(e) => setNewCategoryText(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
                 </div>
               </div>
               <button
                 onClick={() => {
                   if (newCategory && newPM) {
                     addCategoryMapping(newCategory, newPM, newDepartment, newCategoryText);
-                    setNewCategory(''); setNewPM(''); setNewDepartment(''); setNewCategoryText('');
+                    setNewCategory(""); setNewPM(""); setNewDepartment(""); setNewCategoryText("");
                   }
                 }}
                 disabled={!newCategory || !newPM}
@@ -772,8 +506,10 @@ const loadFromOneDrive = async (silent = false) => {
                 <h3 className="font-semibold text-red-900 mb-2">Unmatched Categories ({unmatchedCategories.length})</h3>
                 <p className="text-sm text-red-800 mb-3">These categories don't have PM assignments:</p>
                 <div className="flex flex-wrap gap-2">
-                  {unmatchedCategories.map(cat => (
-                    <span key={cat} className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm">{cat}</span>
+                  {unmatchedCategories.map((cat) => (
+                    <span key={cat} className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm">
+                      {cat}
+                    </span>
                   ))}
                 </div>
               </div>
@@ -782,21 +518,25 @@ const loadFromOneDrive = async (silent = false) => {
             <div>
               <div className="flex justify-between items-center mb-3">
                 <h3 className="font-semibold text-gray-800">Current Mappings ({categoryMapping.length})</h3>
-                <button onClick={exportCategoryMapping} className="text-sm px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700">Export JSON</button>
+                <button onClick={exportCategoryMapping} className="text-sm px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700">
+                  Export JSON
+                </button>
               </div>
               <div className="space-y-2 max-h-96 overflow-y-auto">
-                {categoryMapping.map((mapping, idx) => (
-                  <div key={idx} className="flex items-start justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                {categoryMapping.map((m, idx) => (
+                  <div key={idx} className="flex items-start justify-between p-4 bg-gray-50 rounded-lg border">
                     <div className="flex-1 space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-gray-900">{mapping.category}</span>
+                        <span className="font-bold text-gray-900">{m.category}</span>
                         <span className="text-gray-400">→</span>
-                        <span className="font-semibold text-blue-600">{mapping.pm}</span>
+                        <span className="font-semibold text-blue-600">{m.pm}</span>
                       </div>
-                      {mapping.category_text && (<p className="text-sm text-gray-600">{mapping.category_text}</p>)}
-                      {mapping.department && (<p className="text-xs text-gray-500">Department: {mapping.department}</p>)}
+                      {m.category_text && <p className="text-sm text-gray-600">{m.category_text}</p>}
+                      {m.department && <p className="text-xs text-gray-500">Department: {m.department}</p>}
                     </div>
-                    <button onClick={() => removeCategoryMapping(mapping.category)} className="text-red-600 hover:text-red-800 text-sm ml-4">Remove</button>
+                    <button onClick={() => removeCategoryMapping(m.category)} className="text-red-600 hover:text-red-800 text-sm ml-4">
+                      Remove
+                    </button>
                   </div>
                 ))}
               </div>
@@ -805,11 +545,16 @@ const loadFromOneDrive = async (silent = false) => {
             <div>
               <h3 className="font-semibold text-gray-800 mb-3">All Categories in Data ({allCategories.length})</h3>
               <div className="flex flex-wrap gap-2">
-                {allCategories.map(cat => {
-                  const hasMapping = categoryMapping.some(m => m.category.trim().toUpperCase() === cat.trim().toUpperCase());
+                {allCategories.map((cat) => {
+                  const hasMapping = categoryMapping.some(
+                    (m) => m.category.trim().toUpperCase() === cat.trim().toUpperCase()
+                  );
                   return (
-                    <span key={cat} className={`px-3 py-1 rounded-full text-sm ${hasMapping ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                      {cat} {hasMapping && '✓'}
+                    <span
+                      key={cat}
+                      className={`px-3 py-1 rounded-full text-sm ${hasMapping ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}
+                    >
+                      {cat} {hasMapping && "✓"}
                     </span>
                   );
                 })}
@@ -821,27 +566,172 @@ const loadFromOneDrive = async (silent = false) => {
     );
   };
 
-  /* ---------------------------------- UI ---------------------------------- */
+  /* ------------------------ SharePoint data loader ---------------------- */
+  const loadFromSharePoint = async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const token = await ensureAccessToken();
+      const graph = Client.init({ authProvider: (done) => done(null, token) });
+      const ods = new OneDriveService(graph);
 
+      const HOST = graphConfig.spHostname;
+      const SITE = graphConfig.spSitePath;
+      const BASE = graphConfig.spBasePath;
+
+      const [tickets, reports, mapping] = await Promise.all([
+        ods.readExcelFromSharePoint({
+          hostname: HOST, sitePath: SITE,
+          fileRelativePath: `${BASE}/${graphConfig.ticketsFile}`,
+        }).catch(() => []),
+        ods.readExcelFromSharePoint({
+          hostname: HOST, sitePath: SITE,
+          fileRelativePath: `${BASE}/${graphConfig.reportsFile}`,
+        }).catch(() => []),
+        ods.readJsonFromSharePoint({
+          hostname: HOST, sitePath: SITE,
+          fileRelativePath: `${BASE}/${graphConfig.mappingFile}`,
+        }).catch(() => []),
+      ]);
+
+      setTicketData(tickets);
+      setReportData(reports);
+      setCategoryMapping(mapping);
+      setLastSync(new Date());
+
+      if (!silent) {
+        alert(`Loaded from SharePoint:\n${tickets.length} tickets\n${reports.length} reports\n${mapping.length} category mappings`);
+      }
+    } catch (e) {
+      console.error("SharePoint load failed:", e);
+      if (!silent) alert(e.message || "Failed to load from SharePoint.");
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
+
+  /* ------------------------------ Auth handlers ------------------------ */
+  const handleLogin = async () => {
+    try {
+      await msalInstance.loginPopup(loginRequest);
+      const account = msalInstance.getAllAccounts()[0];
+      const { accessToken } = await msalInstance.acquireTokenSilent({ ...loginRequest, account });
+      setAccessToken(accessToken);
+      setIsAuthenticated(true);
+      setUserName(account.name);
+      await loadFromSharePoint(false);
+    } catch (err) {
+      console.error("Login failed:", err);
+      alert("Failed to sign in to Microsoft. Please try again.");
+    }
+  };
+
+  const handleLogout = () => {
+    msalInstance.logoutPopup();
+    setIsAuthenticated(false);
+    setAccessToken(null);
+    setUserName("");
+    setTicketData([]);
+    setReportData([]);
+    setCategoryMapping([]);
+    setCombinedDataWithNotes([]);
+    setNotesMap(new Map());
+    notesListenersRef.current.forEach((u) => u());
+    notesListenersRef.current.clear();
+  };
+
+  /* -------------------------------- Effects ---------------------------- */
+  // Restore session & silent initial load
+  useEffect(() => {
+    (async () => {
+      try {
+        const account = msalInstance.getAllAccounts()[0];
+        if (!account) return;
+        const r = await msalInstance.acquireTokenSilent({ ...loginRequest, account });
+        setAccessToken(r.accessToken);
+        setIsAuthenticated(true);
+        setUserName(account.name || "");
+        await loadFromSharePoint(true);
+      } catch {
+        // not signed in
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-refresh every 5 minutes
+  useEffect(() => {
+    if (!autoRefresh || !isAuthenticated || !accessToken) return;
+    const interval = setInterval(() => loadFromSharePoint(true), 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [autoRefresh, isAuthenticated, accessToken]);
+
+  /* ------------------------------ Derived UI --------------------------- */
+  const hasData = ticketData.length > 0 || reportData.length > 0;
+
+  const getCurrentData = () => {
+    switch (activeTab) {
+      case "tickets": return ticketData;
+      case "reports": return reportData;
+      case "combined": return combinedDataWithNotes;
+      default: return [];
+    }
+  };
+  const currentData = getCurrentData();
+
+  const columns = currentData.length > 0
+    ? Object.keys(currentData[0]).filter((c) => !c.startsWith("_"))
+    : [];
+
+  const filteredAndSortedData = useMemo(() => {
+    let rows = currentData;
+
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
+      rows = rows.filter((r) =>
+        Object.values(r).some((v) => String(v ?? "").toLowerCase().includes(q))
+      );
+    }
+
+    if (sortConfig.key) {
+      rows = [...rows].sort((a, b) => {
+        const av = a[sortConfig.key];
+        const bv = b[sortConfig.key];
+        if (av === bv) return 0;
+        return (av > bv ? 1 : -1) * (sortConfig.direction === "asc" ? 1 : -1);
+      });
+    }
+
+    return rows;
+  }, [currentData, searchTerm, sortConfig]);
+
+  const openRowEditor = (idx) => {
+    setEditingRowIndex(idx);
+    setEditingRow(filteredAndSortedData[idx]);
+  };
+  const closeRowEditor = () => {
+    setEditingRow(null);
+    setEditingRowIndex(null);
+  };
+
+  /* -------------------------------- RENDER ----------------------------- */
   return (
-    <div className="w-full h-screen flex flex-col bg-gray-50">
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+    <div className="w-full min-h-screen flex flex-col bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-800">Repair Tracker Dashboard</h1>
             <div className="flex items-center gap-3 mt-1">
               <p className="text-sm text-gray-500">
-                {isAuthenticated ? `Connected as ${userName}` : 'Not connected to OneDrive'}
+                {isAuthenticated ? `Connected as ${userName}` : "Not connected"}
               </p>
               {isAuthenticated && (
                 <div className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
-                  <Cloud size={12} /> OneDrive synced
+                  <Cloud size={12} /> SharePoint synced
                 </div>
               )}
               {lastSync && (
-                <span className="text-xs text-gray-500">
-                  Last sync: {lastSync.toLocaleTimeString()}
-                </span>
+                <span className="text-xs text-gray-500">Last sync: {lastSync.toLocaleTimeString()}</span>
               )}
             </div>
           </div>
@@ -853,27 +743,136 @@ const loadFromOneDrive = async (silent = false) => {
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
               >
                 <Cloud size={16} />
-                Sign in to OneDrive
+                Sign in
               </button>
             ) : (
               <>
                 <button
-                  onClick={() => loadFromOneDrive(false)}
+                  onClick={() => loadFromSharePoint(false)}
                   disabled={loading}
                   className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
                 >
-                  <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                  <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
                   Refresh
                 </button>
-
                 <button
                   onClick={handleLogout}
                   className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm"
                 >
                   Sign Out
                 </button>
+                <label className="flex items-center gap-2 text-sm ml-2">
+                  <input
+                    type="checkbox"
+                    checked={autoRefresh}
+                    onChange={(e) => setAutoRefresh(e.target.checked)}
+                  />
+                  Auto refresh
+                </label>
               </>
             )}
+
+            {/* Admin: upload mapping/tickets/reports (optional manual loads) */}
+            <label className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 cursor-pointer transition-colors text-sm">
+              <Upload size={16} />
+              Upload Mapping
+              <input
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  try {
+                    const txt = await f.text();
+                    const json = JSON.parse(txt);
+                    setCategoryMapping(json);
+                    alert(`Loaded ${json.length} category mappings from ${f.name}`);
+                  } catch (err) {
+                    alert("Invalid JSON file");
+                  }
+                }}
+              />
+            </label>
+            <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-sm">
+              <Upload size={16} />
+              Upload Tickets
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  setLoading(true);
+                  try {
+                    // Lazy-load XLSX if needed
+                    if (typeof window.XLSX === "undefined") {
+                      await new Promise((res, rej) => {
+                        const s = document.createElement("script");
+                        s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+                        s.onload = res; s.onerror = rej; document.head.appendChild(s);
+                      });
+                    }
+                    const buf = await f.arrayBuffer();
+                    const wb = window.XLSX.read(buf, { type: "array", cellDates: true });
+                    const sheet = wb.Sheets[wb.SheetNames[0]];
+                    const raw = window.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
+                    if (raw.length < 2) throw new Error("Empty or incorrect format");
+                    const headers = (raw[1] || []).map((h) => String(h || "").trim()).filter(Boolean);
+                    const rows = raw.slice(2)
+                      .filter((r) => r && r.some((c) => c !== "" && c != null))
+                      .map((r) => Object.fromEntries(headers.map((h, i) => [h, r[i] ?? ""])));
+                    setTicketData(rows);
+                    alert(`Loaded ${rows.length} ticket rows from ${f.name}`);
+                  } catch (err) {
+                    console.error(err);
+                    alert("Failed to parse Excel");
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+              />
+            </label>
+            <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-sm">
+              <Upload size={16} />
+              Upload Reports
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  setLoading(true);
+                  try {
+                    if (typeof window.XLSX === "undefined") {
+                      await new Promise((res, rej) => {
+                        const s = document.createElement("script");
+                        s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+                        s.onload = res; s.onerror = rej; document.head.appendChild(s);
+                      });
+                    }
+                    const buf = await f.arrayBuffer();
+                    const wb = window.XLSX.read(buf, { type: "array", cellDates: true });
+                    const sheet = wb.Sheets[wb.SheetNames[0]];
+                    const raw = window.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
+                    if (raw.length < 2) throw new Error("Empty or incorrect format");
+                    const headers = (raw[1] || []).map((h) => String(h || "").trim()).filter(Boolean);
+                    const rows = raw.slice(2)
+                      .filter((r) => r && r.some((c) => c !== "" && c != null))
+                      .map((r) => Object.fromEntries(headers.map((h, i) => [h, r[i] ?? ""])));
+                    setReportData(rows);
+                    alert(`Loaded ${rows.length} report rows from ${f.name}`);
+                  } catch (err) {
+                    console.error(err);
+                    alert("Failed to parse Excel");
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+              />
+            </label>
 
             {hasData && (
               <button
@@ -888,74 +887,16 @@ const loadFromOneDrive = async (silent = false) => {
                 )}
               </button>
             )}
-
-            <label className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 cursor-pointer transition-colors text-sm">
-              <Upload size={16} />
-              Upload Mapping
-              <input type="file" accept=".json" onChange={(e) => handleFileUpload(e, 'mapping')} className="hidden" disabled={loading} />
-            </label>
-
-            <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-sm">
-              <Upload size={16} />
-              Upload Tickets
-              <input type="file" accept=".xlsx,.xls" onChange={(e) => handleFileUpload(e, 'tickets')} className="hidden" disabled={loading} />
-            </label>
-
-            <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-sm">
-              <Upload size={16} />
-              Upload Reports
-              <input type="file" accept=".xlsx,.xls" onChange={(e) => handleFileUpload(e, 'reports')} className="hidden" disabled={loading} />
-            </label>
           </div>
         </div>
       </div>
 
-      <div className="bg-white border-b border-gray-200">
-        <div className="flex px-6 overflow-x-auto">
-          <button
-            onClick={() => setActiveTab('combined')}
-            className={`px-6 py-3 font-medium border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'combined' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Combined Report
-            <span className="ml-2 text-xs bg-gray-100 px-2 py-1 rounded-full">{combinedDataWithNotes.length}</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('tickets')}
-            className={`px-6 py-3 font-medium border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'tickets' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Repair Ticket List
-            <span className="ml-2 text-xs bg-gray-100 px-2 py-1 rounded-full">{ticketData.length}</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('reports')}
-            className={`px-6 py-3 font-medium border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'reports' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Repair Report
-            <span className="ml-2 text-xs bg-gray-100 px-2 py-1 rounded-full">{reportData.length}</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('diagnostics')}
-            className={`px-6 py-3 font-medium border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === 'diagnostics' ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Diagnostics
-          </button>
-        </div>
-      </div>
-
-      {/* Filters + Export */}
-      {hasData && activeTab !== 'diagnostics' && (
-        <div className="bg-white border-b border-gray-200 px-6 py-3">
+      {/* Search / Tabs */}
+      {hasData && (
+        <div className="bg-white border-b px-6 py-3">
           <div className="flex items-center justify-between mb-3">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="text"
                 placeholder="Search across all columns..."
@@ -965,80 +906,37 @@ const loadFromOneDrive = async (silent = false) => {
               />
             </div>
 
-            <div className="flex items-center gap-2 ml-4">
-             <select
-  value={locationFilter}
-  onChange={(e) => setLocationFilter(e.target.value)}
-  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white min-w-[180px]"
->
-  <option value="">All Locations</option>
-  {uniqueLocations.map((location) => (
-    <option key={location} value={location}>
-      {location}
-    </option>
-  ))}
-</select>
-
-
-
-              {locationFilter && (
-                <button onClick={() => setLocationFilter('')} className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
-                  Clear
-                </button>
-              )}
-
-              {activeTab === 'combined' && (
-                <>
-                  <select
-                    value={pmFilter}
-                    onChange={(e) => setPmFilter(e.target.value)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white min-w-[200px]"
-                  >
-                    <option value="">All Assigned To</option>
-                    <option value="__unassigned__">Unassigned</option>
-                    {uniquePMs.map(pm => (<option key={pm} value={pm}>{pm}</option>))}
-                  </select>
-
-                  {pmFilter && (
-                    <button onClick={() => setPmFilter('')} className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
-                      Clear
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2 ml-4">
-             
+            <div className="flex ml-4">
               <button
-                onClick={exportToCSV}
-                disabled={currentData.length === 0}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                onClick={() => setActiveTab("combined")}
+                className={`px-6 py-3 font-medium border-b-2 transition-colors ${
+                  activeTab === "combined" ? "border-blue-500 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
               >
-                <Download size={18} />
-                Export
+                Combined <span className="ml-2 text-xs bg-gray-100 px-2 py-1 rounded-full">{combinedDataWithNotes.length}</span>
+              </button>
+              <button
+                onClick={() => setActiveTab("tickets")}
+                className={`px-6 py-3 font-medium border-b-2 transition-colors ${
+                  activeTab === "tickets" ? "border-blue-500 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Tickets <span className="ml-2 text-xs bg-gray-100 px-2 py-1 rounded-full">{ticketData.length}</span>
+              </button>
+              <button
+                onClick={() => setActiveTab("reports")}
+                className={`px-6 py-3 font-medium border-b-2 transition-colors ${
+                  activeTab === "reports" ? "border-blue-500 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Reports <span className="ml-2 text-xs bg-gray-100 px-2 py-1 rounded-full">{reportData.length}</span>
               </button>
             </div>
           </div>
-
-          {activeTab === 'combined' && (
-            <div className="flex items-center gap-4 text-xs text-gray-500">
-              <span>Total: {combinedDataWithNotes.length} items</span>
-              <span className="text-green-600">
-                Assigned: {combinedDataWithNotes.filter(row => row['Assigned To'] && row['Assigned To'] !== '').length}
-              </span>
-              <span className="text-red-600 font-semibold">
-                Unassigned: {combinedDataWithNotes.filter(row => !row['Assigned To'] || row['Assigned To'] === '').length}
-              </span>
-              {categoryMapping.length > 0 && <span className="text-purple-600">{categoryMapping.length} category mappings</span>}
-              {unmatchedCategories.length > 0 && <span className="text-orange-600 font-semibold">{unmatchedCategories.length} categories without PM</span>}
-              <span className="text-blue-600">{uniquePMs.length} unique PMs</span>
-            </div>
-          )}
         </div>
       )}
 
-      {/* Main table / diagnostics / empty states */}
+      {/* Body */}
       <div className="flex-1 overflow-hidden px-6 py-4">
         {loading ? (
           <div className="flex items-center justify-center h-full">
@@ -1047,130 +945,104 @@ const loadFromOneDrive = async (silent = false) => {
               <p className="text-gray-500">Loading...</p>
             </div>
           </div>
-        ) : activeTab === 'diagnostics' ? (
-          <div className="max-w-6xl mx-auto space-y-6 overflow-y-auto h-full pb-8">
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Data Matching Diagnostics</h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="p-4 bg-blue-50 rounded-lg">
-                  <h3 className="font-semibold text-blue-900 mb-2">Repair Ticket List</h3>
-                  <p className="text-2xl font-bold text-blue-800">{ticketData.length}</p>
-                  <p className="text-sm text-blue-700">records</p>
-                </div>
-                <div className="p-4 bg-green-50 rounded-lg">
-                  <h3 className="font-semibold text-green-900 mb-2">Repair Report</h3>
-                  <p className="text-2xl font-bold text-green-800">{reportData.length}</p>
-                  <p className="text-sm text-green-700">records</p>
-                </div>
-                <div className="p-4 bg-purple-50 rounded-lg">
-                  <h3 className="font-semibold text-purple-900 mb-2">Category Mappings</h3>
-                  <p className="text-2xl font-bold text-purple-800">{categoryMapping.length}</p>
-                  <p className="text-sm text-purple-700">categories mapped</p>
-                </div>
-              </div>
-
-              {combinedDataWithNotes.length > 0 && (
-                <div className="p-4 bg-indigo-50 rounded-lg">
-                  <h3 className="font-semibold text-indigo-900 mb-4">Workload by Assigned PM</h3>
-                  <div className="space-y-3">
-                    {Object.entries(pmWorkload)
-                      .sort((a, b) => b[1].count - a[1].count)
-                      .map(([pm, stats]) => (
-                        <div key={pm} className="p-3 bg-white rounded-lg shadow-sm">
-                          <div className="flex justify-between items-start mb-2">
-                            <span className={`font-semibold ${pm === 'Unassigned' ? 'text-red-600' : 'text-gray-800'}`}>{pm}</span>
-                            <span className="text-lg font-bold text-indigo-600">{stats.count} items</span>
-                          </div>
-                          <div className="grid grid-cols-3 gap-2 text-sm">
-                            <div><span className="text-gray-600">Total Cost:</span><p className="font-semibold">${stats.totalCost.toFixed(2)}</p></div>
-                            <div><span className="text-gray-600">Avg Age:</span><p className="font-semibold">{stats.avgAge} days</p></div>
-                            <div><span className="text-gray-600">Workload %:</span><p className="font-semibold">{((stats.count / combinedDataWithNotes.length) * 100).toFixed(1)}%</p></div>
-                          </div>
-                          <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div className={`h-full ${pm === 'Unassigned' ? 'bg-red-500' : 'bg-indigo-500'}`} style={{ width: `${(stats.count / combinedDataWithNotes.length) * 100}%` }} />
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
         ) : !hasData ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center max-w-lg bg-white p-12 rounded-lg shadow-lg">
               <FileSpreadsheet className="mx-auto text-blue-500 mb-6" size={64} />
               <h3 className="text-2xl font-semibold text-gray-800 mb-3">Welcome to Repair Tracker</h3>
-              <p className="text-gray-600 mb-6">Sign in to OneDrive to load shared data, or upload files manually</p>
+              <p className="text-gray-600 mb-6">Sign in to load data from SharePoint, or upload files manually.</p>
             </div>
           </div>
         ) : currentData.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <div className="text-center bg-white p-8 rounded-lg shadow"><p className="text-gray-500">No data available</p></div>
+            <div className="text-center bg-white p-8 rounded-lg shadow">
+              <p className="text-gray-500">No data available</p>
+            </div>
           </div>
         ) : (
           <div className="bg-white rounded-lg shadow h-full overflow-auto">
             <table className="w-full border-collapse">
               <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                 <tr>
-                  {columns.map((col) => {
-                    const isEditable = activeTab === 'combined' && (col === 'Meeting Note' || col === 'Requires Follow Up');
-                    return (
-                      <th
-                        key={col}
-                        onClick={() => handleSort(col)}
-                        className={`px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 bg-gray-50 ${wrapText ? 'whitespace-normal' : 'whitespace-nowrap'}`}
-                      >
-                        <div className="flex items-center gap-2">
-                          {col}
-                          {isEditable && <span className="text-blue-500">✏️</span>}
-                          {sortConfig.key === col && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
-                        </div>
-                      </th>
-                    );
-                  })}
+                  {columns.map((col) => (
+                    <th
+                      key={col}
+                      onClick={() => handleSort(col)}
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 bg-gray-50 whitespace-normal"
+                    >
+                      <div className="flex items-center gap-2">
+                        {col}
+                        {sortConfig.key === col &&
+                          (sortConfig.direction === "asc" ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
+                      </div>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredAndSortedData.map((row, idx) => {
-                  const hasAssignment = row['Assigned To'] && row['Assigned To'] !== '';
-                  const rowBgColor = activeTab === 'combined' && !hasAssignment ? 'bg-red-50' : '';
-                  const isEditable = activeTab === 'combined';
-                  return (
-                    <tr key={idx} className={`${rowBgColor} ${isEditable ? 'hover:bg-blue-50 cursor-pointer' : 'hover:bg-gray-50'}`} onClick={() => isEditable && openRowEditor(idx)}>
-                      {columns.map((col) => (
-                        <td key={col} className={`px-4 py-3 text-sm text-gray-900 ${wrapText ? 'whitespace-normal break-words' : 'whitespace-nowrap'}`} style={wrapText ? { maxWidth: '300px' } : undefined}>
-                          {formatCell(row[col])}
-                        </td>
-                      ))}
-                    </tr>
-                  );
-                })}
+                {filteredAndSortedData.map((row, idx) => (
+                  <tr
+                    key={idx}
+                    className="hover:bg-blue-50 cursor-pointer"
+                    onClick={() => activeTab === "combined" && openRowEditor(idx)}
+                  >
+                    {columns.map((col) => (
+                      <td
+                        key={col}
+                        className="px-4 py-3 text-sm text-gray-900 whitespace-normal break-words"
+                        style={{ maxWidth: "300px" }}
+                      >
+                        {formatCell(row[col])}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         )}
       </div>
 
-      {hasData && activeTab !== 'diagnostics' && (
-        <div className="bg-white border-t border-gray-200 px-6 py-3">
+      {/* Footer */}
+      {hasData && (
+        <div className="bg-white border-t px-6 py-3">
           <div className="flex items-center justify-between text-sm text-gray-600">
             <span>Showing {filteredAndSortedData.length} of {currentData.length} records</span>
-            <div className="flex items-center gap-4">
-              {locationFilter && (<span className="text-blue-600">Location: {locationFilter}</span>)}
-              {pmFilter && (<span className="text-green-600">Assigned To: {pmFilter === '__unassigned__' ? 'Unassigned' : pmFilter}</span>)}
-              {searchTerm && (<span className="text-blue-600">Search: "{searchTerm}"</span>)}
-            </div>
+            <button
+              onClick={() => {
+                const headers = columns.join(",");
+                const rows = filteredAndSortedData.map((r) =>
+                  columns.map((c) => `"${String(formatCell(r[c]) || "").replace(/"/g, '""')}"`).join(",")
+                );
+                const csv = [headers, ...rows].join("\n");
+                const blob = new Blob([csv], { type: "text/csv" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `export_${activeTab}_${new Date().toISOString().slice(0, 10)}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Download size={18} />
+              Export
+            </button>
           </div>
         </div>
       )}
 
       {showCategoryManager && <CategoryManager />}
 
-      {editingRow && <RowEditor row={editingRow} rowIndex={editingRowIndex} onClose={closeRowEditor} />}
+      {editingRow && (
+        <RowEditor
+          row={editingRow}
+          rowIndex={editingRowIndex}
+          onClose={closeRowEditor}
+        />
+      )}
     </div>
   );
 };
 
-export default RepairTrackerSheet;
+export default App;

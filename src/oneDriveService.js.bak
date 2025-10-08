@@ -1,157 +1,120 @@
 // src/oneDriveService.js
 import * as XLSX from "xlsx";
+import { ResponseType } from "@microsoft/microsoft-graph-client";
 
-/** Encode each path segment safely (handles spaces, () etc.) */
-function encodePath(path) {
-  return path
-    .split("/")
-    .map((seg) => encodeURIComponent(seg))
-    .join("/");
-}
-
-/** Detect a 404-style "not found" from Graph errors */
-function isNotFound(err) {
-  // Graph SDK errors often carry statusCode
-  if (err && (err.statusCode === 404 || err.code === 404)) return true;
-  // Fallback: check message text
-  const msg = (err && (err.message || err.toString())) || "";
-  return msg.includes("404") || msg.includes("Not Found");
-}
+// ... keep encodePath / isNotFound helpers if you added them ...
 
 export default class OneDriveService {
-  /**
-   * @param {import("@microsoft/microsoft-graph-client").Client} client - Graph client
-   * @param {string} folderPath - Root folder under your OneDrive (or shortcut), e.g. "RepairTracker"
-   */
   constructor(client, folderPath = "RepairTracker") {
     this.client = client;
     this.folderPath = folderPath;
   }
 
-  /** Try fetching file content by path under the user's OneDrive root */
-  async getFileContentByPath(fileNameOrPath) {
-    const path = fileNameOrPath.includes("/")
-      ? fileNameOrPath
-      : `${this.folderPath}/${fileNameOrPath}`;
-    const encoded = encodePath(path);
-    // /root:/path:/content (OneDrive)
-    return this.client.api(`/me/drive/root:/${encoded}:/content`).get();
+  // ------- BINARY (Excel) fetch by path -------
+  async getBinaryByPath(filePath) {
+    const path = filePath.includes("/") ? filePath : `${this.folderPath}/${filePath}`;
+    const encoded = path.split("/").map(encodeURIComponent).join("/");
+    return this.client
+      .api(`/me/drive/root:/${encoded}:/content`)
+      .responseType(ResponseType.ARRAYBUFFER)   // 👈 force ArrayBuffer
+      .get();
   }
 
-  /**
-   * Fetch content by drive item id or driveItem object.
-   * Handles shared items that require remoteItem + driveId.
-   */
-  async getFileContentById(itemOrId) {
+  // ------- BINARY (Excel) fetch by id/remoteItem -------
+  async getBinaryByItem(itemOrId) {
     try {
       const id = typeof itemOrId === "string" ? itemOrId : itemOrId.id;
-      return await this.client.api(`/me/drive/items/${id}/content`).get();
+      return await this.client
+        .api(`/me/drive/items/${id}/content`)
+        .responseType(ResponseType.ARRAYBUFFER) // 👈 force ArrayBuffer
+        .get();
     } catch (err) {
-      // For shared items, sometimes we must use the source drive (remoteItem)
       const item = typeof itemOrId === "string" ? null : itemOrId;
       const driveId = item?.remoteItem?.parentReference?.driveId;
       const remoteId = item?.remoteItem?.id;
       if (driveId && remoteId) {
-        return this.client.api(`/drives/${driveId}/items/${remoteId}/content`).get();
+        return this.client
+          .api(`/drives/${driveId}/items/${remoteId}/content`)
+          .responseType(ResponseType.ARRAYBUFFER) // 👈 force ArrayBuffer
+          .get();
       }
       throw err;
     }
   }
 
-  /**
-   * Lookup a file in "Shared with me".
-   * Returns the full driveItem (we may need remoteItem data).
-   */
-  async searchSharedFile(fileName) {
-    const resp = await this.client.api("/me/drive/sharedWithMe").get();
-    // Exact (case-sensitive) first, then case-insensitive
-    let hit = resp.value.find((x) => x.name === fileName && !x.folder);
-    if (!hit) {
-      hit = resp.value.find(
-        (x) => x.name?.toLowerCase() === fileName.toLowerCase() && !x.folder
-      );
-    }
-    if (!hit) {
-      throw new Error(`File not found in "Shared with me": ${fileName}`);
-    }
-    return hit;
+  // ------- TEXT/JSON fetch by path -------
+  async getTextByPath(filePath) {
+    const path = filePath.includes("/") ? filePath : `${this.folderPath}/${filePath}`;
+    const encoded = path.split("/").map(encodeURIComponent).join("/");
+    return this.client
+      .api(`/me/drive/root:/${encoded}:/content`)
+      .responseType(ResponseType.TEXT)          // 👈 force text
+      .get();
   }
 
-  /* ---------------------------- public readers ---------------------------- */
+  // ------- TEXT/JSON fetch by id/remoteItem -------
+  async getTextByItem(itemOrId) {
+    try {
+      const id = typeof itemOrId === "string" ? itemOrId : itemOrId.id;
+      return await this.client
+        .api(`/me/drive/items/${id}/content`)
+        .responseType(ResponseType.TEXT)        // 👈 force text
+        .get();
+    } catch (err) {
+      const item = typeof itemOrId === "string" ? null : itemOrId;
+      const driveId = item?.remoteItem?.parentReference?.driveId;
+      const remoteId = item?.remoteItem?.id;
+      if (driveId && remoteId) {
+        return this.client
+          .api(`/drives/${driveId}/items/${remoteId}/content`)
+          .responseType(ResponseType.TEXT)      // 👈 force text
+          .get();
+      }
+      throw err;
+    }
+  }
 
-  /** Read an Excel file (path first, then shared fallback) */
+  // ---------------- public APIs ----------------
   async readExcelFileShared(fileName) {
     let content;
     try {
-      // 1) Try via OneDrive path (works if a shortcut exists)
-      content = await this.getFileContentByPath(fileName);
+      content = await this.getBinaryByPath(fileName);
     } catch (err) {
-      if (!isNotFound(err)) throw err;
-      // 2) Fallback: sharedWithMe → fetch by id/remoteItem
       const item = await this.searchSharedFile(fileName);
-      content = await this.getFileContentById(item);
+      content = await this.getBinaryByItem(item);
     }
-
-    const buf = await this._toArrayBuffer(content);
-    return this._xlsxToRows(buf);
+    return this._xlsxToRows(content); // already an ArrayBuffer
   }
 
-  /** Read a JSON file (path first, then shared fallback) */
   async readJsonFileShared(fileName) {
-    let content;
+    let text;
     try {
-      content = await this.getFileContentByPath(fileName);
+      text = await this.getTextByPath(fileName);
     } catch (err) {
-      if (!isNotFound(err)) throw err;
       const item = await this.searchSharedFile(fileName);
-      content = await this.getFileContentById(item);
+      text = await this.getTextByItem(item);
     }
-
-    const text = await this._toText(content);
     return JSON.parse(text);
   }
 
-  /* ------------------------------ converters ------------------------------ */
-
-  async _toArrayBuffer(fileContent) {
-    if (fileContent instanceof ArrayBuffer) return fileContent;
-    if (fileContent instanceof Blob) return fileContent.arrayBuffer();
-    if (fileContent?.arrayBuffer) return fileContent.arrayBuffer(); // Response-like
-    if (typeof fileContent === "string") {
-      return new TextEncoder().encode(fileContent).buffer;
-    }
-    throw new Error("Unexpected file content type");
-  }
-
-  async _toText(fileContent) {
-    if (typeof fileContent === "string") return fileContent;
-    if (fileContent instanceof Blob) return fileContent.text();
-    if (fileContent?.text) return fileContent.text(); // Response-like
-    const buf = await this._toArrayBuffer(fileContent);
-    return new TextDecoder().decode(buf);
+  // unchanged: searchSharedFile + parsers
+  async searchSharedFile(fileName) {
+    const resp = await this.client.api("/me/drive/sharedWithMe").get();
+    let hit = resp.value.find(x => x.name === fileName && !x.folder);
+    if (!hit) hit = resp.value.find(x => x.name?.toLowerCase() === fileName.toLowerCase() && !x.folder);
+    if (!hit) throw new Error(`File not found in "Shared with me": ${fileName}`);
+    return hit;
   }
 
   _xlsxToRows(arrayBuffer) {
     const wb = XLSX.read(arrayBuffer, { type: "array", cellDates: true });
     const sheet = wb.Sheets[wb.SheetNames[0]];
-    const raw = XLSX.utils.sheet_to_json(sheet, {
-      header: 1,
-      defval: "",
-      raw: false,
-    });
+    const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
     if (raw.length < 2) return [];
-
-    // Row 2 are headers (index 1)
-    const headers = (raw[1] || [])
-      .map((h) => String(h || "").trim())
-      .filter(Boolean);
-
-    // Data starts at row 3 (index 2)
+    const headers = (raw[1] || []).map(h => String(h || "").trim()).filter(Boolean);
     return raw
       .slice(2)
-      .filter((row) => row && row.some((c) => c !== "" && c != null))
-      .map((row) =>
-        Object.fromEntries(headers.map((h, i) => [h, row[i] != null ? String(row[i]) : ""]))
-      );
+      .filter(row => row && row.some(c => c !== "" && c != null))
+      .map(row => Object.fromEntries(headers.map((h, i) => [h, row[i] ?? ""])));
   }
 }
