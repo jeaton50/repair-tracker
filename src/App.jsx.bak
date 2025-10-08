@@ -916,73 +916,11 @@ const RepairTrackerSheet = () => {
         </div>
       </div>
 
-      {/* Toolbar: Search + Filters + Tabs */}
+      {/* Toolbar: Tabs on top, Search + Filters below */}
       <div className="bg-white border-b">
-        <div className="flex items-center px-6 py-3 gap-4 flex-wrap">
-          {/* Search */}
-          <div className="flex-1 relative min-w-[260px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input
-              type="text"
-              placeholder="Search across all columns..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          {/* Filters */}
-          <div className="flex items-center gap-2 ml-4">
-            {/* Location filter */}
-            <select
-              value={locationFilter}
-              onChange={(e) => setLocationFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white min-w-[180px]"
-            >
-              <option value="">All Locations</option>
-              {uniqueLocations.map((loc) => (
-                <option key={loc} value={loc}>{loc}</option>
-              ))}
-            </select>
-
-            {locationFilter && (
-              <button
-                onClick={() => setLocationFilter("")}
-                className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                Clear
-              </button>
-            )}
-
-            {/* PM filter only on Combined tab */}
-            {activeTab === "combined" && (
-              <>
-                <select
-                  value={pmFilter}
-                  onChange={(e) => setPmFilter(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white min-w-[200px]"
-                >
-                  <option value="">All Assigned To</option>
-                  <option value="__unassigned__">Unassigned</option>
-                  {uniquePMs.map((pm) => (
-                    <option key={pm} value={pm}>{pm}</option>
-                  ))}
-                </select>
-
-                {pmFilter && (
-                  <button
-                    onClick={() => setPmFilter("")}
-                    className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    Clear
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Tabs */}
-          <div className="flex ml-auto">
+        {/* Tabs Row */}
+        <div className="flex items-center justify-between px-6 pt-3 border-b">
+          <div className="flex">
             <button
               onClick={() => setActiveTab("combined")}
               className={`px-4 py-2 font-medium border-b-2 transition-colors ${
@@ -1016,16 +954,78 @@ const RepairTrackerSheet = () => {
               Diagnostics
             </button>
           </div>
-
+          
           {/* Export */}
           <button
             onClick={exportToCSV}
             disabled={getCurrentData().length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 text-sm"
           >
             <Download size={18} />
             Export
           </button>
+        </div>
+
+        {/* Search and Filters Row */}
+        <div className="flex items-center px-6 py-3 gap-3">
+          {/* Search */}
+          <div className="flex-1 relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input
+              type="text"
+              placeholder="Search across all columns..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+            />
+          </div>
+
+          {/* Location filter */}
+          <select
+            value={locationFilter}
+            onChange={(e) => setLocationFilter(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm"
+          >
+            <option value="">All Locations</option>
+            {uniqueLocations.map((loc) => (
+              <option key={loc} value={loc}>{loc}</option>
+            ))}
+          </select>
+
+          {locationFilter && (
+            <button
+              onClick={() => setLocationFilter("")}
+              className="px-3 py-2 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              Clear Location
+            </button>
+          )}
+
+          {/* PM filter only on Combined tab */}
+          {activeTab === "combined" && (
+            <>
+              <select
+                value={pmFilter}
+                onChange={(e) => setPmFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm"
+              >
+                <option value="">All Assigned To</option>
+                <option value="__unassigned__">Unassigned</option>
+                {uniquePMs.map((pm) => (
+                  <option key={pm} value={pm}>{pm}</option>
+                ))}
+              </select>
+
+              {pmFilter && (
+                <button
+                  onClick={() => setPmFilter("")}
+                  className="px-3 py-2 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Clear PM
+                </button>
+              )}
+            </>
+          )}
         </div>
       </div>
 
