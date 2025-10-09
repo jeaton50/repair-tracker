@@ -8,6 +8,9 @@ import { db } from "./firebase";
 import * as XLSX from "xlsx";
 import { doc, setDoc, onSnapshot, serverTimestamp, deleteDoc, writeBatch } from "firebase/firestore";
 import { Search, Download, ChevronDown, ChevronUp, Upload, FileSpreadsheet, RefreshCw, Cloud } from "lucide-react";
+import { Client } from '@microsoft/microsoft-graph-client';
+import { AuthCodeMSALBrowserAuthenticationProvider } from '@microsoft/microsoft-graph-client/authProviders/msal-browser';
+import 'isomorphic-fetch'; // optional in most browsers, safe to include
 
 // ---------- MSAL instance & helpers ----------
 const msalInstance = new PublicClientApplication(msalConfig);
