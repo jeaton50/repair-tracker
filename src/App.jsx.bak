@@ -5,12 +5,8 @@ import { PublicClientApplication } from "@azure/msal-browser";
 import { msalConfig, loginRequest, graphConfig } from "./authConfig";
 import OneDriveService from "./oneDriveService";
 import { db } from "./firebase";
-import * as XLSX from "xlsx";
-import { doc, setDoc, onSnapshot, serverTimestamp, deleteDoc, writeBatch } from "firebase/firestore";
+import { doc, setDoc, onSnapshot, serverTimestamp, deleteDoc } from "firebase/firestore";
 import { Search, Download, ChevronDown, ChevronUp, Upload, FileSpreadsheet, RefreshCw, Cloud } from "lucide-react";
-import { Client } from '@microsoft/microsoft-graph-client';
-import { AuthCodeMSALBrowserAuthenticationProvider } from '@microsoft/microsoft-graph-client/authProviders/msal-browser';
-import 'isomorphic-fetch'; // optional in most browsers, safe to include
 
 // ---------- MSAL instance & helpers ----------
 const msalInstance = new PublicClientApplication(msalConfig);
@@ -101,75 +97,7 @@ const RowEditor = ({ row, rowIndex, onClose }) => {
     }
   };
 
-  
-  const importNotesFromExcel = async (file) => {
-    if (!file) return;
-    setIsImporting(true);
-    try {
-      const buf = await file.arrayBuffer();
-      const wb  = XLSX.read(buf, { type: "array" });
-      const ws  = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
-
-      const norm = (v) => String(v ?? "").trim();
-      const getRow = (r) => {
-        const barcode =
-          norm(r["Barcode#"] || r["Barcode"] || r["BARCODE#"] || r["barcode"]);
-        const meetingNote =
-          r["Meeting Note"] ?? r["MeetingNote"] ?? r["Meeting_Notes"] ?? "";
-        const requiresFollowUp =
-          r["Requires Follow Up"] ??
-          r["RequiresFollowUp"] ??
-          r["Follow Up"] ??
-          r["FollowUp"] ??
-          "";
-        return {
-          barcode,
-          meetingNote: String(meetingNote),
-          requiresFollowUp: String(requiresFollowUp),
-        };
-      };
-
-      // Dedupe last row wins
-      const byBarcode = new Map();
-      for (const raw of rows) {
-        const { barcode, meetingNote, requiresFollowUp } = getRow(raw);
-        if (!barcode) continue;
-        byBarcode.set(barcode, { barcode, meetingNote, requiresFollowUp });
-      }
-      const deduped = Array.from(byBarcode.values());
-
-      // Write in chunks
-      const chunkSize = 400;
-      let written = 0;
-      for (let i = 0; i < deduped.length; i += chunkSize) {
-        const slice = deduped.slice(i, i + chunkSize);
-        const batch = writeBatch(db);
-        for (const { barcode, meetingNote, requiresFollowUp } of slice) {
-          const ref = doc(db, "repairNotes", barcode);
-          batch.set(
-            ref,
-            {
-              barcode,
-              meetingNote,
-              requiresFollowUp,
-              lastUpdated: serverTimestamp(),
-            },
-            { merge: true }
-          );
-          written++;
-        }
-        await batch.commit();
-      }
-      alert(`Imported/merged notes for ${written} unique barcodes`);
-    } catch (e) {
-      console.error("Notes import failed:", e);
-      alert("Failed to import notes. Ensure the first sheet has columns: Barcode#, Meeting Note, Requires Follow Up.");
-    } finally {
-      setIsImporting(false);
-    }
-  };
-return (
+  return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <div className="p-6 border-b flex justify-between items-center">
@@ -292,10 +220,6 @@ const RepairTrackerSheet = () => {
 
   const [combinedDataWithNotes, setCombinedDataWithNotes] = useState([]);
   const [notesMap, setNotesMap] = useState(new Map());
-
-  const [isImporting, setIsImporting] = useState(false);
-  const isImportingRef = useRef(false);
-  useEffect(() => { isImportingRef.current = isImporting; }, [isImporting]);
   const notesListenersRef = useRef(new Map());
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -545,7 +469,7 @@ const RepairTrackerSheet = () => {
       const unsub = onSnapshot(
         ref,
         (snap) => {
-          if (isImportingRef.current) return; setNotesMap((prev) => {
+          setNotesMap((prev) => {
             const n = new Map(prev);
             if (snap.exists()) {
               const d = snap.data();
@@ -987,19 +911,7 @@ const RepairTrackerSheet = () => {
                 disabled={loading}
               />
             </label>
-            
-            <label className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 cursor-pointer transition-colors text-sm">
-              <Upload size={16} />
-              Upload Notes (Excel/CSV)
-              <input
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                onChange={(e) => importNotesFromExcel(e.target.files?.[0])}
-                className="hidden"
-                disabled={loading || isImporting}
-              />
-            </label>
-<label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-sm">
+            <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-sm">
               <Upload size={16} />
               Upload Tickets
               <input
