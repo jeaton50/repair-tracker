@@ -813,140 +813,181 @@ const RepairTrackerSheet = () => {
     XLSX.writeFile(wb, "notes_import_template.xlsx");
   };
 
-  const importNotesFromExcel = async (file, skipEmptyNotes = false) => {
-    if (!file) return;
-    setIsImporting(true);
-    try {
-      const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, { type: "array" });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
+  // Replace your existing importNotesFromExcel with this version
+const importNotesFromExcel = async (
+  file,
+  options = {}
+) => {
+  if (!file) return;
 
-      console.log("📊 Import Debug Info:");
-      console.log(`Total rows in Excel: ${rows.length}`);
-      
-      if (rows.length > 0) {
-        console.log("Column headers found:", Object.keys(rows[0]));
-        console.log("First row sample:", rows[0]);
-      }
+  const {
+    // default: DO NOT import rows that would clear notes
+    skipEmptyNotes = true,
+    // optional: explicitly choose a sheet
+    sheetName = null,
+  } = options;
 
-      const norm = (v) => String(v ?? "").trim();
-      const getRow = (r) => {
-        // Try all possible column name variations
-        const barcode =
-          norm(r["Barcode#"] || r["Barcode"] || r["BARCODE#"] || r["barcode"] || 
-               r["Barcode #"] || r["BARCODE"] || r["BarcodeNumber"] || r["Barcode Number"]);
-        const meetingNote =
-          r["Meeting Note"] ?? r["MeetingNote"] ?? r["Meeting_Notes"] ?? r["Meeting Notes"] ??
-          r["MEETING NOTE"] ?? r["meeting note"] ?? r["Notes"] ?? "";
-        const requiresFollowUp =
-          r["Requires Follow Up"] ?? r["RequiresFollowUp"] ?? r["Follow Up"] ?? r["FollowUp"] ??
-          r["REQUIRES FOLLOW UP"] ?? r["requires follow up"] ?? r["Follow-Up"] ?? r["Followup"] ?? "";
-        
-        return {
-          barcode,
-          meetingNote: String(meetingNote).trim(),
-          requiresFollowUp: String(requiresFollowUp).trim(),
-        };
-      };
+  // helper: normalize header keys (strip spaces, #, dashes, underscores)
+  const normKey = (k) =>
+    String(k || "")
+      .toLowerCase()
+      .replace(/[^\w]/g, ""); // leaves letters/numbers/_ only
 
-      let skipped = 0;
-      let emptyNotes = 0;
-      let skippedEmpty = 0;
-      const byBarcode = new Map();
-      
-      for (const raw of rows) {
-        const { barcode, meetingNote, requiresFollowUp } = getRow(raw);
-        
-        if (!barcode) {
-          skipped++;
-          continue;
-        }
-        
-        const isEmpty = !meetingNote && !requiresFollowUp;
-        
-        if (isEmpty) {
-          emptyNotes++;
-          if (skipEmptyNotes) {
-            skippedEmpty++;
-            continue; // Skip this row entirely
-          }
-        }
-        
-        byBarcode.set(barcode, { barcode, meetingNote, requiresFollowUp });
-      }
-      
-      const deduped = Array.from(byBarcode.values());
-      console.log(`Processed: ${deduped.length} unique barcodes`);
-      console.log(`Skipped: ${skipped} rows (no barcode)`);
-      console.log(`Empty notes: ${emptyNotes} rows (have barcode but no notes)`);
-      if (skipEmptyNotes) {
-        console.log(`Skipped empty: ${skippedEmpty} rows (empty notes were not imported)`);
-      }
+  // helper: safe string
+  const s = (v) => (v == null ? "" : String(v).trim());
 
-      // If there are empty notes and user didn't specify to skip, ask them
-      if (emptyNotes > 0 && !skipEmptyNotes) {
-        const shouldSkip = window.confirm(
-          `⚠️ Warning: ${emptyNotes} rows have barcodes but NO notes.\n\n` +
-          `Importing these will CLEAR existing notes for those barcodes.\n\n` +
-          `Do you want to SKIP these empty rows?\n\n` +
-          `• Click OK to SKIP empty rows (recommended)\n` +
-          `• Click Cancel to import anyway (will clear existing notes)`
-        );
-        
-        if (shouldSkip) {
-          // Re-run import with skipEmptyNotes = true
-          setIsImporting(false);
-          await importNotesFromExcel(file, true);
-          return;
-        }
-      }
+  // accepted header variants after normalization
+  const BARCODE_KEYS = new Set(["barcode", "barcodenumber"]);
+  const MEETING_KEYS = new Set(["meetingnote", "meetingnotes", "meeting_note", "notes"]);
+  const FOLLOWUP_KEYS = new Set([
+    "requiresfollowup",
+    "followup",
+    "followuprequired",
+    "follow_up",
+    "follow-up",
+  ].map(normKey));
 
-      const chunkSize = 400;
-      let written = 0;
-      for (let i = 0; i < deduped.length; i += chunkSize) {
-        const slice = deduped.slice(i, i + chunkSize);
-        const batch = writeBatch(db);
-        for (const { barcode, meetingNote, requiresFollowUp } of slice) {
-          const ref = doc(db, "repairNotes", barcode);
-          batch.set(
-            ref,
-            {
-              barcode,
-              meetingNote,
-              requiresFollowUp,
-              lastUpdated: serverTimestamp(),
-            },
-            { merge: true }
-          );
-          written++;
-        }
-        await batch.commit();
-      }
-      
-      const message = `✅ Import Complete!\n\n` +
-        `• Imported: ${written} unique barcodes\n` +
-        `• Skipped: ${skipped} rows (no barcode)\n` +
-        (skipEmptyNotes ? `• Skipped empty: ${skippedEmpty} rows\n` : `• Empty notes: ${emptyNotes} rows (cleared existing notes)\n`) +
-        `\nCheck browser console (F12) for detailed info.`;
-      
-      alert(message);
-      console.log("Import successful!");
-    } catch (e) {
-      console.error("Notes import failed:", e);
-      alert(
-        `❌ Import Failed!\n\n` +
-        `Error: ${e.message}\n\n` +
-        `Make sure your Excel file has these columns:\n` +
-        `• Barcode# (or Barcode)\n` +
-        `• Meeting Note (or MeetingNote)\n` +
-        `• Requires Follow Up (or Follow Up)\n\n` +
-        `Check browser console (F12) for more details.`
-      );
-    } finally {
-      setIsImporting(false);
+  // field extractor with fallbacks
+  const pickField = (row, candidatesSet) => {
+    for (const [k, v] of Object.entries(row)) {
+      if (candidatesSet.has(k)) return s(v);
     }
+    return "";
   };
+
+  setIsImporting(true);
+
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: "array", raw: true });
+
+    // choose sheet: explicit name > first that includes "notes" > first
+    let chosen = wb.SheetNames[0];
+    if (sheetName && wb.SheetNames.includes(sheetName)) {
+      chosen = sheetName;
+    } else {
+      const notesSheet = wb.SheetNames.find((n) => n.toLowerCase().includes("notes"));
+      if (notesSheet) chosen = notesSheet;
+    }
+
+    const ws = wb.Sheets[chosen];
+    if (!ws) throw new Error("No worksheet found to import.");
+
+    // Read as objects, keep empty cells
+    const rawRows = XLSX.utils.sheet_to_json(ws, { defval: "", raw: true });
+
+    // Normalize header keys on each row (so "Meeting Note", "meeting_note", etc. all map)
+    const rows = rawRows.map((r) => {
+      const out = {};
+      for (const [k, v] of Object.entries(r)) out[normKey(k)] = v;
+      return out;
+    });
+
+    // Build byBarcode map with MERGE policy:
+    // - Non-empty new values overwrite existing
+    // - Empty values do NOT overwrite (unless skipEmptyNotes === false and the row has both empty, we still keep existing)
+    const byBarcode = new Map();
+
+    let skippedNoBarcode = 0;
+    let emptyRows = 0;
+    let duplicateRows = 0;
+
+    for (const row of rows) {
+      const barcode = pickField(row, BARCODE_KEYS);
+      if (!barcode) {
+        skippedNoBarcode++;
+        continue;
+      }
+
+      const meetingNote = pickField(row, MEETING_KEYS);
+      const requiresFollowUp = pickField(row, FOLLOWUP_KEYS);
+
+      const isEmpty = !meetingNote && !requiresFollowUp;
+      if (isEmpty) emptyRows++;
+
+      // If skipping empty-note rows, ignore these entirely (don’t clear existing)
+      if (isEmpty && skipEmptyNotes) continue;
+
+      if (byBarcode.has(barcode)) duplicateRows++;
+
+      const prev = byBarcode.get(barcode) || { barcode, meetingNote: "", requiresFollowUp: "" };
+      byBarcode.set(barcode, {
+        barcode,
+        meetingNote: meetingNote || prev.meetingNote || "",
+        requiresFollowUp: requiresFollowUp || prev.requiresFollowUp || "",
+      });
+    }
+
+    const deduped = Array.from(byBarcode.values());
+
+    // Batch write to Firestore
+    const chunkSize = 400;
+    let written = 0;
+    for (let i = 0; i < deduped.length; i += chunkSize) {
+      const slice = deduped.slice(i, i + chunkSize);
+      const batch = writeBatch(db);
+      for (const { barcode, meetingNote, requiresFollowUp } of slice) {
+        const ref = doc(db, "repairNotes", barcode);
+        batch.set(
+          ref,
+          {
+            barcode,
+            meetingNote: meetingNote, // may be "" if user explicitly chose to allow clearing
+            requiresFollowUp: requiresFollowUp,
+            lastUpdated: serverTimestamp(),
+          },
+          { merge: true }
+        );
+        written++;
+      }
+      await batch.commit();
+    }
+
+    // Seed local caches so UI updates immediately (listeners were paused during import)
+    setNotesCache((prev) => {
+      const next = new Map(prev);
+      for (const { barcode, meetingNote, requiresFollowUp } of deduped) {
+        next.set(barcode, { meetingNote, requiresFollowUp });
+      }
+      return next;
+    });
+    setNotesMap((prev) => {
+      const next = new Map(prev);
+      for (const { barcode, meetingNote, requiresFollowUp } of deduped) {
+        next.set(barcode, { meetingNote, requiresFollowUp });
+      }
+      return next;
+    });
+
+    // Friendly summary
+    const msgLines = [
+      `✅ Notes Import Complete (sheet: "${chosen}")`,
+      `• Imported/updated (unique barcodes): ${written.toLocaleString()}`,
+      `• Skipped (no barcode): ${skippedNoBarcode.toLocaleString()}`,
+      `• Rows with empty notes: ${emptyRows.toLocaleString()}`,
+      `• Duplicate rows encountered: ${duplicateRows.toLocaleString()} (merged)`,
+      skipEmptyNotes
+        ? "• Empty-note rows were skipped (existing notes left intact)."
+        : "• Empty-note rows were applied (existing notes may have been cleared).",
+    ];
+    alert(msgLines.join("\n"));
+    console.log(msgLines.join("\n"));
+  } catch (e) {
+    console.error("Notes import failed:", e);
+    alert(
+      `❌ Import Failed\n\n${e.message}\n\n` +
+        `Tips:\n` +
+        `• Put notes on a sheet named like "Notes", or pass { sheetName: "YourTab" }.\n` +
+        `• Required headers (any of these forms):\n` +
+        `  - Barcode: Barcode#, Barcode, Barcode #, BARCODE, BARCODE#, BarcodeNumber, Barcode Number\n` +
+        `  - Meeting Note: Meeting Note, MeetingNote, Meeting_Notes, Meeting Notes, MEETING NOTE, meeting note, Notes\n` +
+        `  - Requires Follow Up: Requires Follow Up, RequiresFollowUp, Follow Up, FollowUp, REQUIRES FOLLOW UP, Follow-Up, Followup\n`
+    );
+  } finally {
+    setIsImporting(false);
+  }
+};
+
 
   const CategoryManager = () => {
     const [newCategory, setNewCategory] = useState("");
