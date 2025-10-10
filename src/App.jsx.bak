@@ -313,7 +313,7 @@ const PaginatedTable = ({ data, columns, onRowClick, activeTab, currentPage, set
       </div>
 
       {/* Pagination Controls */}
-      {totalPages > 1 && (
+      {totalPages > 1 && itemsPerPage < 99999 && (
         <div className="border-t bg-white px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -777,6 +777,42 @@ const RepairTrackerSheet = () => {
     URL.revokeObjectURL(url);
   };
 
+  const downloadNotesTemplate = () => {
+    // Create sample data
+    const templateData = [
+      {
+        "Barcode#": "RV123456",
+        "Meeting Note": "Example: Cable tested and working properly",
+        "Requires Follow Up": "Example: Ship to customer location"
+      },
+      {
+        "Barcode#": "MC987654",
+        "Meeting Note": "Example: Screen cracked, needs replacement",
+        "Requires Follow Up": "Example: Order new screen from vendor"
+      },
+      {
+        "Barcode#": "RV555555",
+        "Meeting Note": "Example: Battery issue resolved",
+        "Requires Follow Up": ""
+      }
+    ];
+
+    // Create workbook
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Notes Template");
+
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 15 },  // Barcode#
+      { wch: 50 },  // Meeting Note
+      { wch: 40 }   // Requires Follow Up
+    ];
+
+    // Generate and download
+    XLSX.writeFile(wb, "notes_import_template.xlsx");
+  };
+
   const importNotesFromExcel = async (file) => {
     if (!file) return;
     setIsImporting(true);
@@ -786,32 +822,57 @@ const RepairTrackerSheet = () => {
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
 
+      console.log("📊 Import Debug Info:");
+      console.log(`Total rows in Excel: ${rows.length}`);
+      
+      if (rows.length > 0) {
+        console.log("Column headers found:", Object.keys(rows[0]));
+        console.log("First row sample:", rows[0]);
+      }
+
       const norm = (v) => String(v ?? "").trim();
       const getRow = (r) => {
+        // Try all possible column name variations
         const barcode =
-          norm(r["Barcode#"] || r["Barcode"] || r["BARCODE#"] || r["barcode"]);
+          norm(r["Barcode#"] || r["Barcode"] || r["BARCODE#"] || r["barcode"] || 
+               r["Barcode #"] || r["BARCODE"] || r["BarcodeNumber"] || r["Barcode Number"]);
         const meetingNote =
-          r["Meeting Note"] ?? r["MeetingNote"] ?? r["Meeting_Notes"] ?? "";
+          r["Meeting Note"] ?? r["MeetingNote"] ?? r["Meeting_Notes"] ?? r["Meeting Notes"] ??
+          r["MEETING NOTE"] ?? r["meeting note"] ?? r["Notes"] ?? "";
         const requiresFollowUp =
-          r["Requires Follow Up"] ??
-          r["RequiresFollowUp"] ??
-          r["Follow Up"] ??
-          r["FollowUp"] ??
-          "";
+          r["Requires Follow Up"] ?? r["RequiresFollowUp"] ?? r["Follow Up"] ?? r["FollowUp"] ??
+          r["REQUIRES FOLLOW UP"] ?? r["requires follow up"] ?? r["Follow-Up"] ?? r["Followup"] ?? "";
+        
         return {
           barcode,
-          meetingNote: String(meetingNote),
-          requiresFollowUp: String(requiresFollowUp),
+          meetingNote: String(meetingNote).trim(),
+          requiresFollowUp: String(requiresFollowUp).trim(),
         };
       };
 
+      let skipped = 0;
+      let emptyNotes = 0;
       const byBarcode = new Map();
+      
       for (const raw of rows) {
         const { barcode, meetingNote, requiresFollowUp } = getRow(raw);
-        if (!barcode) continue;
+        
+        if (!barcode) {
+          skipped++;
+          continue;
+        }
+        
+        if (!meetingNote && !requiresFollowUp) {
+          emptyNotes++;
+        }
+        
         byBarcode.set(barcode, { barcode, meetingNote, requiresFollowUp });
       }
+      
       const deduped = Array.from(byBarcode.values());
+      console.log(`Processed: ${deduped.length} unique barcodes`);
+      console.log(`Skipped: ${skipped} rows (no barcode)`);
+      console.log(`Empty notes: ${emptyNotes} rows (have barcode but no notes)`);
 
       const chunkSize = 400;
       let written = 0;
@@ -834,10 +895,26 @@ const RepairTrackerSheet = () => {
         }
         await batch.commit();
       }
-      alert(`Imported/merged notes for ${written} unique barcodes`);
+      
+      const message = `✅ Import Complete!\n\n` +
+        `• Imported: ${written} unique barcodes\n` +
+        `• Skipped: ${skipped} rows (no barcode)\n` +
+        `• Empty notes: ${emptyNotes} rows\n\n` +
+        `Check browser console (F12) for detailed info.`;
+      
+      alert(message);
+      console.log("Import successful!");
     } catch (e) {
       console.error("Notes import failed:", e);
-      alert("Failed to import notes. Ensure the first sheet has columns: Barcode#, Meeting Note, Requires Follow Up.");
+      alert(
+        `❌ Import Failed!\n\n` +
+        `Error: ${e.message}\n\n` +
+        `Make sure your Excel file has these columns:\n` +
+        `• Barcode# (or Barcode)\n` +
+        `• Meeting Note (or MeetingNote)\n` +
+        `• Requires Follow Up (or Follow Up)\n\n` +
+        `Check browser console (F12) for more details.`
+      );
     } finally {
       setIsImporting(false);
     }
@@ -1115,6 +1192,7 @@ const RepairTrackerSheet = () => {
               {activeTab === "combined" && (
                 <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
                   Active listeners: {notesListenersRef.current.size} / {MAX_LISTENERS}
+                  {itemsPerPage >= 99999 && " (limited for performance)"}
                 </span>
               )}
             </div>
@@ -1190,6 +1268,15 @@ const RepairTrackerSheet = () => {
                 disabled={loading || isImporting}
               />
             </label>
+            
+            <button
+              onClick={downloadNotesTemplate}
+              className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm"
+              title="Download Excel template for notes import"
+            >
+              <Download size={16} />
+              Notes Template
+            </button>
           </div>
         </div>
       </div>
@@ -1397,7 +1484,27 @@ const RepairTrackerSheet = () => {
                     <span>Filtered Rows:</span>
                     <span className="font-mono font-bold">{filteredAndSortedData.length}</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span>Rows Per Page:</span>
+                    <span className="font-mono font-bold">
+                      {itemsPerPage >= 99999 ? "All" : itemsPerPage}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Estimated DOM Nodes:</span>
+                    <span className="font-mono font-bold">
+                      {itemsPerPage >= 99999 
+                        ? `~${(filteredAndSortedData.length * columns.length).toLocaleString()}`
+                        : `~${(Math.min(itemsPerPage, filteredAndSortedData.length) * columns.length).toLocaleString()}`
+                      }
+                    </span>
+                  </div>
                 </div>
+                {itemsPerPage >= 99999 && filteredAndSortedData.length > 500 && (
+                  <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                    ⚠️ Showing all rows may impact performance with large datasets
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1435,8 +1542,14 @@ const RepairTrackerSheet = () => {
         <div className="bg-white border-t px-6 py-3">
           <div className="flex items-center justify-between text-sm text-gray-600">
             <span>
-              Page {currentPage} of {Math.ceil(filteredAndSortedData.length / ITEMS_PER_PAGE)} 
-              {" "}({filteredAndSortedData.length} total records)
+              {itemsPerPage >= 99999 ? (
+                `Showing all ${filteredAndSortedData.length} records`
+              ) : (
+                <>
+                  Page {currentPage} of {Math.ceil(filteredAndSortedData.length / ITEMS_PER_PAGE)} 
+                  {" "}({filteredAndSortedData.length} total records)
+                </>
+              )}
             </span>
             <div className="flex items-center gap-4">
               {locationFilter && <span className="text-blue-600">Location: {locationFilter}</span>}
