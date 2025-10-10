@@ -266,30 +266,27 @@ const VirtualizedTable = ({ data, columns, onRowClick, activeTab }) => {
     <div ref={parentRef} className="h-full overflow-auto bg-white rounded-lg shadow">
       {/* Sticky Header */}
       <div className="sticky top-0 z-20 bg-gray-50 border-b">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr>
-              {columns.map((col) => {
-                const isEditable =
-                  activeTab === "combined" && (col === "Meeting Note" || col === "Requires Follow Up");
-                return (
-                  <th
-                    key={col}
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-normal bg-gray-50"
-                  >
-                    <div className="flex items-center gap-2">
-                      {col}
-                      {isEditable && <span className="text-blue-500">✏️</span>}
-                    </div>
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
-        </table>
+        <div className="flex w-full">
+          {columns.map((col) => {
+            const isEditable =
+              activeTab === "combined" && (col === "Meeting Note" || col === "Requires Follow Up");
+            return (
+              <div
+                key={col}
+                className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-normal bg-gray-50 flex-1"
+                style={{ minWidth: 150 }}
+              >
+                <div className="flex items-center gap-2">
+                  {col}
+                  {isEditable && <span className="text-blue-500">✏️</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Virtual Rows */}
+      {/* Virtual Rows Container */}
       <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
         {items.map((virtualRow) => {
           const row = data[virtualRow.index];
@@ -300,6 +297,8 @@ const VirtualizedTable = ({ data, columns, onRowClick, activeTab }) => {
           return (
             <div
               key={virtualRow.key}
+              className={`flex w-full border-b ${rowBg} ${isEditable ? "hover:bg-blue-50 cursor-pointer" : "hover:bg-gray-50"}`}
+              onClick={() => isEditable && onRowClick(virtualRow.index)}
               style={{
                 position: 'absolute',
                 top: 0,
@@ -309,24 +308,15 @@ const VirtualizedTable = ({ data, columns, onRowClick, activeTab }) => {
                 transform: `translateY(${virtualRow.start}px)`,
               }}
             >
-              <table className="w-full border-collapse">
-                <tbody>
-                  <tr
-                    className={`${rowBg} ${isEditable ? "hover:bg-blue-50 cursor-pointer" : "hover:bg-gray-50"} border-b`}
-                    onClick={() => isEditable && onRowClick(virtualRow.index)}
-                  >
-                    {columns.map((col) => (
-                      <td
-                        key={col}
-                        className="px-4 py-3 text-sm text-gray-900 whitespace-normal break-words"
-                        style={{ maxWidth: 300 }}
-                      >
-                        {String(row[col] ?? "")}
-                      </td>
-                    ))}
-                  </tr>
-                </tbody>
-              </table>
+              {columns.map((col) => (
+                <div
+                  key={col}
+                  className="px-4 py-3 text-sm text-gray-900 whitespace-normal break-words flex-1"
+                  style={{ minWidth: 150 }}
+                >
+                  {String(row[col] ?? "")}
+                </div>
+              ))}
             </div>
           );
         })}

@@ -7,8 +7,7 @@ import OneDriveService from "./oneDriveService";
 import { db } from "./firebase";
 import * as XLSX from "xlsx";
 import { doc, setDoc, onSnapshot, serverTimestamp, deleteDoc, writeBatch, getDoc } from "firebase/firestore";
-import { Search, Download, ChevronDown, ChevronUp, Upload, FileSpreadsheet, RefreshCw, Cloud } from "lucide-react";
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { Search, Download, ChevronDown, ChevronUp, Upload, FileSpreadsheet, RefreshCw, Cloud, ChevronLeft, ChevronRight } from "lucide-react";
 
 // ---------- MSAL instance & helpers ----------
 const msalInstance = new PublicClientApplication(msalConfig);
@@ -249,78 +248,122 @@ const RowEditor = ({ row, rowIndex, onClose }) => {
   );
 };
 
-// ---------- Virtualized Table Component ----------
-const VirtualizedTable = ({ data, columns, onRowClick, activeTab }) => {
-  const parentRef = useRef(null);
-
-  const virtualizer = useVirtualizer({
-    count: data.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 56,
-    overscan: 20,
-  });
-
-  const items = virtualizer.getVirtualItems();
+// ---------- Paginated Table Component ----------
+const PaginatedTable = ({ data, columns, onRowClick, activeTab, currentPage, setCurrentPage, itemsPerPage, sortConfig, onSort }) => {
+  const totalPages = Math.ceil(data.length / itemsPerPage);
+  const startIdx = (currentPage - 1) * itemsPerPage;
+  const endIdx = startIdx + itemsPerPage;
+  const paginatedData = data.slice(startIdx, endIdx);
 
   return (
-    <div ref={parentRef} className="h-full overflow-auto bg-white rounded-lg shadow">
-      {/* Sticky Header */}
-      <div className="sticky top-0 z-20 bg-gray-50 border-b">
-        <div className="flex w-full">
-          {columns.map((col) => {
-            const isEditable =
-              activeTab === "combined" && (col === "Meeting Note" || col === "Requires Follow Up");
-            return (
-              <div
-                key={col}
-                className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-normal bg-gray-50 flex-1"
-                style={{ minWidth: 150 }}
-              >
-                <div className="flex items-center gap-2">
-                  {col}
-                  {isEditable && <span className="text-blue-500">✏️</span>}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Virtual Rows Container */}
-      <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
-        {items.map((virtualRow) => {
-          const row = data[virtualRow.index];
-          const hasAssignment = row["Assigned To"] && row["Assigned To"] !== "";
-          const rowBg = activeTab === "combined" && !hasAssignment ? "bg-red-50" : "";
-          const isEditable = activeTab === "combined";
-
-          return (
-            <div
-              key={virtualRow.key}
-              className={`flex w-full border-b ${rowBg} ${isEditable ? "hover:bg-blue-50 cursor-pointer" : "hover:bg-gray-50"}`}
-              onClick={() => isEditable && onRowClick(virtualRow.index)}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: `${virtualRow.size}px`,
-                transform: `translateY(${virtualRow.start}px)`,
-              }}
-            >
-              {columns.map((col) => (
-                <div
-                  key={col}
-                  className="px-4 py-3 text-sm text-gray-900 whitespace-normal break-words flex-1"
-                  style={{ minWidth: 150 }}
+    <div className="h-full flex flex-col bg-white rounded-lg shadow">
+      {/* Table */}
+      <div className="flex-1 overflow-auto">
+        <table className="w-full border-collapse">
+          <thead className="bg-gray-50 border-b sticky top-0 z-10">
+            <tr>
+              {columns.map((col) => {
+                const isEditable =
+                  activeTab === "combined" && (col === "Meeting Note" || col === "Requires Follow Up");
+                return (
+                  <th
+                    key={col}
+                    onClick={() => onSort(col)}
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-normal bg-gray-50 cursor-pointer hover:bg-gray-100"
+                  >
+                    <div className="flex items-center gap-2">
+                      {col}
+                      {isEditable && <span className="text-blue-500">✏️</span>}
+                      {sortConfig.key === col && (
+                        sortConfig.direction === "asc" ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+                      )}
+                    </div>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y">
+            {paginatedData.map((row, idx) => {
+              const hasAssignment = row["Assigned To"] && row["Assigned To"] !== "";
+              const rowBg = activeTab === "combined" && !hasAssignment ? "bg-red-50" : "";
+              const isEditable = activeTab === "combined";
+              const actualIndex = startIdx + idx;
+              
+              return (
+                <tr
+                  key={actualIndex}
+                  className={`${rowBg} ${isEditable ? "hover:bg-blue-50 cursor-pointer" : "hover:bg-gray-50"}`}
+                  onClick={() => isEditable && onRowClick(actualIndex)}
                 >
-                  {String(row[col] ?? "")}
-                </div>
-              ))}
-            </div>
-          );
-        })}
+                  {columns.map((col) => (
+                    <td
+                      key={col}
+                      className="px-4 py-3 text-sm text-gray-900 whitespace-normal break-words"
+                      style={{ maxWidth: 300 }}
+                    >
+                      {String(row[col] ?? "")}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="border-t bg-white px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                First
+              </button>
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="flex items-center gap-1 px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft size={16} />
+                Previous
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">
+                Page {currentPage} of {totalPages}
+              </span>
+              <span className="text-sm text-gray-400">|</span>
+              <span className="text-sm text-gray-600">
+                Showing {startIdx + 1}-{Math.min(endIdx, data.length)} of {data.length}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="flex items-center gap-1 px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+                <ChevronRight size={16} />
+              </button>
+              <button
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Last
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -361,8 +404,11 @@ const RepairTrackerSheet = () => {
   const [locationFilter, setLocationFilter] = useState("");
   const [pmFilter, setPmFilter] = useState("");
   
-  // For tracking visible rows
-  const [visibleRange, setVisibleRange] = useState({ start: 0, end: 50 });
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 100;
+  
+  // For tracking visible rows (now based on pagination)
   const MAX_LISTENERS = 100;
 
   // Debounced search
@@ -572,26 +618,25 @@ const RepairTrackerSheet = () => {
       return;
     }
 
-    // Only subscribe to notes for visible rows + buffer
-    const bufferSize = 25;
-    const startIdx = Math.max(0, visibleRange.start - bufferSize);
-    const endIdx = Math.min(baseCombinedData.length, visibleRange.end + bufferSize);
-    const visibleBarcodes = baseCombinedData
+    // Only subscribe to notes for current page + buffer
+    const startIdx = Math.max(0, (currentPage - 1) * ITEMS_PER_PAGE - 25);
+    const endIdx = Math.min(baseCombinedData.length, currentPage * ITEMS_PER_PAGE + 25);
+    const pageBarcodes = baseCombinedData
       .slice(startIdx, endIdx)
       .map(row => row["Barcode#"])
       .filter(Boolean)
       .slice(0, MAX_LISTENERS);
 
-    // Cleanup old listeners for barcodes no longer visible
+    // Cleanup old listeners for barcodes no longer on current page
     notesListenersRef.current.forEach((unsub, bc) => {
-      if (!visibleBarcodes.includes(bc)) {
+      if (!pageBarcodes.includes(bc)) {
         unsub();
         notesListenersRef.current.delete(bc);
       }
     });
 
-    // Subscribe to visible barcodes only
-    visibleBarcodes.forEach((bc) => {
+    // Subscribe to current page barcodes only
+    pageBarcodes.forEach((bc) => {
       if (notesListenersRef.current.has(bc)) return;
 
       const ref = doc(db, "repairNotes", bc);
@@ -640,7 +685,7 @@ const RepairTrackerSheet = () => {
       notesListenersRef.current.forEach((unsub) => unsub());
       notesListenersRef.current.clear();
     };
-  }, [baseCombinedData, notesMap, visibleRange, notesCache]);
+  }, [baseCombinedData, notesMap, currentPage, notesCache]);
 
   // Clean up listeners when switching away from combined tab
   useEffect(() => {
@@ -969,6 +1014,11 @@ const RepairTrackerSheet = () => {
 
   // ---------- Filtering, sorting, export ----------
   const hasData = ticketData.length > 0 || reportData.length > 0;
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, locationFilter, pmFilter, activeTab]);
 
   const filteredAndSortedData = useMemo(() => {
     let rows = getCurrentData();
@@ -1322,20 +1372,28 @@ const RepairTrackerSheet = () => {
             </div>
           </div>
         ) : (
-          <VirtualizedTable
+          <PaginatedTable
             data={filteredAndSortedData}
             columns={columns}
             onRowClick={openRowEditor}
             activeTab={activeTab}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            itemsPerPage={ITEMS_PER_PAGE}
+            sortConfig={sortConfig}
+            onSort={handleSort}
           />
         )}
       </div>
 
-      {/* Footer strip */}
+      {/* Footer strip - Updated to show pagination info */}
       {hasData && activeTab !== "diagnostics" && (
         <div className="bg-white border-t px-6 py-3">
           <div className="flex items-center justify-between text-sm text-gray-600">
-            <span>Showing {filteredAndSortedData.length} of {getCurrentData().length} records</span>
+            <span>
+              Page {currentPage} of {Math.ceil(filteredAndSortedData.length / ITEMS_PER_PAGE)} 
+              {" "}({filteredAndSortedData.length} total records)
+            </span>
             <div className="flex items-center gap-4">
               {locationFilter && <span className="text-blue-600">Location: {locationFilter}</span>}
               {activeTab === "combined" && pmFilter && (
