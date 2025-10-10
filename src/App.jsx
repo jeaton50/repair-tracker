@@ -406,7 +406,8 @@ const RepairTrackerSheet = () => {
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 100;
+  const [itemsPerPage, setItemsPerPage] = useState(100);
+  const ITEMS_PER_PAGE = itemsPerPage;
   
   // For tracking visible rows (now based on pagination)
   const MAX_LISTENERS = 100;
@@ -1256,6 +1257,27 @@ const RepairTrackerSheet = () => {
             />
           </div>
 
+          {/* Page Size Selector */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600 whitespace-nowrap">Rows per page:</label>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                const newSize = parseInt(e.target.value);
+                setItemsPerPage(newSize);
+                setCurrentPage(1);
+              }}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm"
+            >
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+              <option value={500}>500</option>
+              <option value={1000}>1,000</option>
+              <option value={99999}>All</option>
+            </select>
+          </div>
+
           <select
             value={locationFilter}
             onChange={(e) => setLocationFilter(e.target.value)}
@@ -1305,6 +1327,28 @@ const RepairTrackerSheet = () => {
 
       {/* Body */}
       <div className="flex-1 overflow-hidden px-6 py-4">
+        {/* Performance Warning for "All" */}
+        {itemsPerPage >= 99999 && filteredAndSortedData.length > 500 && (
+          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <span className="text-yellow-600 text-sm">⚠️</span>
+              <div className="flex-1">
+                <p className="text-sm text-yellow-800 font-medium">Performance Note</p>
+                <p className="text-xs text-yellow-700 mt-1">
+                  Displaying all {filteredAndSortedData.length} rows at once. This may cause slower scrolling. 
+                  Consider using pagination (100-500 rows) for better performance.
+                </p>
+              </div>
+              <button
+                onClick={() => setItemsPerPage(100)}
+                className="text-xs text-yellow-800 hover:text-yellow-900 underline"
+              >
+                Switch to 100/page
+              </button>
+            </div>
+          </div>
+        )}
+        
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
