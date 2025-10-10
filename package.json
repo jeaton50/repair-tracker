@@ -10,7 +10,10 @@
     "deploy": "npm run build && gh-pages -d dist"
   },
   "dependencies": {
-    "firebase": "^10.7.1",
+    "@azure/msal-browser": "^3.0.0",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
+    "@tanstack/react-virtual": "^3.0.0",
+    "firebase": "^10.0.0",
     "lucide-react": "^0.263.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
