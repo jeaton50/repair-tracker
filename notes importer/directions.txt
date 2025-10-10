@@ -1,0 +1,25 @@
+Great — I’ve baked your Firebase config into the importer for you.
+
+Download notes-importer_with_config.html
+
+Quick steps to run
+
+Serve it locally (don’t open with file://):
+
+# from the folder with notes-importer_with_config.html
+npx serve .
+# or
+python -m http.server 8080
+# or
+npx http-server -p 8080
+
+
+Open the printed URL (e.g., http://localhost:3000 or http://localhost:8080).
+
+In Firebase Console → Authentication → Sign-in method, ensure Google is enabled.
+
+In Authentication → Settings → Authorized domains, add:
+
+localhost
+
+Load the page, click Sign in with Google, pick your Excel/CSV, and import.

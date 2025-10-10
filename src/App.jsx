@@ -1,4 +1,4 @@
-// src/App.jsx
+// src/App.jsx - OPTIMIZED VERSION
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { Client } from "@microsoft/microsoft-graph-client";
 import { PublicClientApplication } from "@azure/msal-browser";
@@ -6,8 +6,9 @@ import { msalConfig, loginRequest, graphConfig } from "./authConfig";
 import OneDriveService from "./oneDriveService";
 import { db } from "./firebase";
 import * as XLSX from "xlsx";
-import { doc, setDoc, onSnapshot, serverTimestamp, deleteDoc, writeBatch } from "firebase/firestore";
+import { doc, setDoc, onSnapshot, serverTimestamp, deleteDoc, writeBatch, getDoc } from "firebase/firestore";
 import { Search, Download, ChevronDown, ChevronUp, Upload, FileSpreadsheet, RefreshCw, Cloud } from "lucide-react";
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 // ---------- MSAL instance & helpers ----------
 const msalInstance = new PublicClientApplication(msalConfig);
@@ -27,17 +28,56 @@ async function ensureAccessToken() {
   }
 }
 
-// ---------- Row Editor ----------
+// ---------- Custom Hook: Debounce ----------
+const useDebounce = (callback, delay) => {
+  const timeoutRef = useRef(null);
+  
+  return useCallback((...args) => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => callback(...args), delay);
+  }, [callback, delay]);
+};
+
+// ---------- Row Editor (Optimized - Load on demand) ----------
 const RowEditor = ({ row, rowIndex, onClose }) => {
-  const [meetingNote, setMeetingNote] = useState(row["Meeting Note"] || "");
-  const [followUp, setFollowUp] = useState(row["Requires Follow Up"] || "");
+  const [meetingNote, setMeetingNote] = useState("");
+  const [followUp, setFollowUp] = useState("");
   const [lastSaved, setLastSaved] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const saveTimeoutRef = useRef(null);
   const barcode = row["Barcode#"];
 
+  // Load notes once when editor opens
+  useEffect(() => {
+    if (!barcode) {
+      setIsLoading(false);
+      return;
+    }
+    
+    const loadNotes = async () => {
+      try {
+        const ref = doc(db, "repairNotes", barcode);
+        const snap = await getDoc(ref);
+        
+        if (snap.exists()) {
+          const d = snap.data();
+          setMeetingNote(d.meetingNote || "");
+          setFollowUp(d.requiresFollowUp || "");
+        }
+      } catch (e) {
+        console.error("Failed to load notes:", e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadNotes();
+  }, [barcode]);
+
   // Auto-save
   useEffect(() => {
+    if (isLoading) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(async () => {
       if (!barcode) return;
@@ -58,11 +98,11 @@ const RowEditor = ({ row, rowIndex, onClose }) => {
       }
     }, 1000);
     return () => saveTimeoutRef.current && clearTimeout(saveTimeoutRef.current);
-  }, [meetingNote, followUp, barcode]);
+  }, [meetingNote, followUp, barcode, isLoading]);
 
-  // Real-time sync
+  // Real-time sync only for this ONE row
   useEffect(() => {
-    if (!barcode) return;
+    if (!barcode || isLoading) return;
     const ref = doc(db, "repairNotes", barcode);
     const unsub = onSnapshot(
       ref,
@@ -76,7 +116,7 @@ const RowEditor = ({ row, rowIndex, onClose }) => {
       (err) => console.error("Real-time sync error:", err)
     );
     return () => unsub();
-  }, [barcode]);
+  }, [barcode, isLoading]);
 
   const handleClearAll = () => {
     if (window.confirm("Clear all notes for this item?")) {
@@ -98,75 +138,7 @@ const RowEditor = ({ row, rowIndex, onClose }) => {
     }
   };
 
-  
-  const importNotesFromExcel = async (file) => {
-    if (!file) return;
-    setIsImporting(true);
-    try {
-      const buf = await file.arrayBuffer();
-      const wb  = XLSX.read(buf, { type: "array" });
-      const ws  = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
-
-      const norm = (v) => String(v ?? "").trim();
-      const getRow = (r) => {
-        const barcode =
-          norm(r["Barcode#"] || r["Barcode"] || r["BARCODE#"] || r["barcode"]);
-        const meetingNote =
-          r["Meeting Note"] ?? r["MeetingNote"] ?? r["Meeting_Notes"] ?? "";
-        const requiresFollowUp =
-          r["Requires Follow Up"] ??
-          r["RequiresFollowUp"] ??
-          r["Follow Up"] ??
-          r["FollowUp"] ??
-          "";
-        return {
-          barcode,
-          meetingNote: String(meetingNote),
-          requiresFollowUp: String(requiresFollowUp),
-        };
-      };
-
-      // Dedupe last row wins
-      const byBarcode = new Map();
-      for (const raw of rows) {
-        const { barcode, meetingNote, requiresFollowUp } = getRow(raw);
-        if (!barcode) continue;
-        byBarcode.set(barcode, { barcode, meetingNote, requiresFollowUp });
-      }
-      const deduped = Array.from(byBarcode.values());
-
-      // Write in chunks
-      const chunkSize = 400;
-      let written = 0;
-      for (let i = 0; i < deduped.length; i += chunkSize) {
-        const slice = deduped.slice(i, i + chunkSize);
-        const batch = writeBatch(db);
-        for (const { barcode, meetingNote, requiresFollowUp } of slice) {
-          const ref = doc(db, "repairNotes", barcode);
-          batch.set(
-            ref,
-            {
-              barcode,
-              meetingNote,
-              requiresFollowUp,
-              lastUpdated: serverTimestamp(),
-            },
-            { merge: true }
-          );
-          written++;
-        }
-        await batch.commit();
-      }
-      alert(`Imported/merged notes for ${written} unique barcodes`);
-    } catch (e) {
-      console.error("Notes import failed:", e);
-      alert("Failed to import notes. Ensure the first sheet has columns: Barcode#, Meeting Note, Requires Follow Up.");
-    } finally {
-      setIsImporting(false);
-    }
-  };
-return (
+  return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <div className="p-6 border-b flex justify-between items-center">
@@ -175,8 +147,9 @@ return (
             <p className="text-sm text-gray-500 mt-1">
               {row["Barcode#"]} - {row["Equipment"]}
             </p>
-            {isSaving && <p className="text-xs text-blue-600 mt-1">⟳ Saving...</p>}
-            {lastSaved && !isSaving && (
+            {isLoading && <p className="text-xs text-blue-600 mt-1">⟳ Loading...</p>}
+            {isSaving && !isLoading && <p className="text-xs text-blue-600 mt-1">⟳ Saving...</p>}
+            {lastSaved && !isSaving && !isLoading && (
               <p className="text-xs text-green-600 mt-1">✓ Saved at {lastSaved.toLocaleTimeString()}</p>
             )}
           </div>
@@ -203,6 +176,7 @@ return (
               onChange={(e) => setMeetingNote(e.target.value)}
               placeholder="Add meeting notes here... (auto-saves)"
               className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              disabled={isLoading}
             />
           </div>
 
@@ -232,6 +206,7 @@ return (
               onChange={(e) => setFollowUp(e.target.value)}
               placeholder="Add follow-up notes here... (auto-saves)"
               className="w-full h-24 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              disabled={isLoading}
             />
           </div>
 
@@ -253,12 +228,14 @@ return (
             <button
               onClick={handleClearAll}
               className="px-6 py-2 text-orange-600 bg-orange-50 border border-orange-300 rounded-lg hover:bg-orange-100"
+              disabled={isLoading}
             >
               Clear All Notes
             </button>
             <button
               onClick={handleDeleteFromDatabase}
               className="px-6 py-2 text-red-600 bg-red-50 border border-red-300 rounded-lg hover:bg-red-100"
+              disabled={isLoading}
             >
               Delete from Database
             </button>
@@ -272,9 +249,96 @@ return (
   );
 };
 
+// ---------- Virtualized Table Component ----------
+const VirtualizedTable = ({ data, columns, onRowClick, activeTab }) => {
+  const parentRef = useRef(null);
+
+  const virtualizer = useVirtualizer({
+    count: data.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 56,
+    overscan: 20,
+  });
+
+  const items = virtualizer.getVirtualItems();
+
+  return (
+    <div ref={parentRef} className="h-full overflow-auto bg-white rounded-lg shadow">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-20 bg-gray-50 border-b">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr>
+              {columns.map((col) => {
+                const isEditable =
+                  activeTab === "combined" && (col === "Meeting Note" || col === "Requires Follow Up");
+                return (
+                  <th
+                    key={col}
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-normal bg-gray-50"
+                  >
+                    <div className="flex items-center gap-2">
+                      {col}
+                      {isEditable && <span className="text-blue-500">✏️</span>}
+                    </div>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+        </table>
+      </div>
+
+      {/* Virtual Rows */}
+      <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
+        {items.map((virtualRow) => {
+          const row = data[virtualRow.index];
+          const hasAssignment = row["Assigned To"] && row["Assigned To"] !== "";
+          const rowBg = activeTab === "combined" && !hasAssignment ? "bg-red-50" : "";
+          const isEditable = activeTab === "combined";
+
+          return (
+            <div
+              key={virtualRow.key}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: `${virtualRow.size}px`,
+                transform: `translateY(${virtualRow.start}px)`,
+              }}
+            >
+              <table className="w-full border-collapse">
+                <tbody>
+                  <tr
+                    className={`${rowBg} ${isEditable ? "hover:bg-blue-50 cursor-pointer" : "hover:bg-gray-50"} border-b`}
+                    onClick={() => isEditable && onRowClick(virtualRow.index)}
+                  >
+                    {columns.map((col) => (
+                      <td
+                        key={col}
+                        className="px-4 py-3 text-sm text-gray-900 whitespace-normal break-words"
+                        style={{ maxWidth: 300 }}
+                      >
+                        {String(row[col] ?? "")}
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 // ---------- Main component ----------
 const RepairTrackerSheet = () => {
   const [activeTab, setActiveTab] = useState("combined");
+  const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
 
@@ -289,6 +353,7 @@ const RepairTrackerSheet = () => {
 
   const [combinedDataWithNotes, setCombinedDataWithNotes] = useState([]);
   const [notesMap, setNotesMap] = useState(new Map());
+  const [notesCache, setNotesCache] = useState(new Map());
 
   const [isImporting, setIsImporting] = useState(false);
   const isImportingRef = useRef(false);
@@ -303,13 +368,15 @@ const RepairTrackerSheet = () => {
   const [msalInitialized, setMsalInitialized] = useState(false);
   const [loading, setLoading] = useState(false);
   
-
-  // Filters - SINGLE DECLARATION
   const [locationFilter, setLocationFilter] = useState("");
   const [pmFilter, setPmFilter] = useState("");
+  
+  // For tracking visible rows
+  const [visibleRange, setVisibleRange] = useState({ start: 0, end: 50 });
+  const MAX_LISTENERS = 100;
 
-  // Always wrap text (no toggle)
-  const wrapText = true;
+  // Debounced search
+  const debouncedSetSearch = useDebounce((value) => setSearchTerm(value), 300);
 
   // MSAL init
   useEffect(() => {
@@ -335,7 +402,7 @@ const RepairTrackerSheet = () => {
     }
   }, [msalInitialized]);
 
-  // ---------- SharePoint data loader - WRAPPED IN useCallback ----------
+  // ---------- SharePoint data loader ----------
   const loadFromSharePoint = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
@@ -387,7 +454,7 @@ const RepairTrackerSheet = () => {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, []); // Empty deps - only recreated on mount
+  }, []);
 
   // Load on auth
   useEffect(() => {
@@ -458,25 +525,14 @@ const RepairTrackerSheet = () => {
       const today = new Date();
       return Math.ceil(Math.abs(today - d) / (1000 * 60 * 60 * 24));
     };
-	
-	 const formatTicketNumber = (ticket) => {
-  if (!ticket) return "";
-  
-  // Step 1: Remove everything except numbers and decimal point
-  // "1,234.00" becomes "1234.00"
-  const cleaned = String(ticket).replace(/[^0-9.]/g, "");
-  
-  // Step 2: Convert to number - this automatically removes trailing zeros
-  // "1234.00" becomes the number 1234
-  const num = parseFloat(cleaned);
-  
-  // Step 3: Check if it's a valid number
-  if (isNaN(num)) return "";
-  
-  // Step 4: Use Math.floor to remove any decimal part, then convert to string
-  // 1234.50 becomes 1234
-  return String(Math.floor(num));
-};
+
+    const formatTicketNumber = (ticket) => {
+      if (!ticket) return "";
+      const cleaned = String(ticket).replace(/[^0-9.]/g, "");
+      const num = parseFloat(cleaned);
+      if (isNaN(num)) return "";
+      return String(Math.floor(num));
+    };
 
     const out = reportData.map((r) => {
       const bc = normalizeBarcode(r["Barcode#"]);
@@ -519,40 +575,57 @@ const RepairTrackerSheet = () => {
     return out;
   }, [ticketData, reportData, categoryMapping]);
 
-  // ---------- Notes live merge ----------
+  // ---------- OPTIMIZED Notes live merge with LIMITED listeners ----------
   useEffect(() => {
     if (baseCombinedData.length === 0) {
       setCombinedDataWithNotes([]);
       return;
     }
-    const barcodes = baseCombinedData.map((row) => row["Barcode#"]).filter(Boolean);
 
-    // Cleanup old listeners
+    // Only subscribe to notes for visible rows + buffer
+    const bufferSize = 25;
+    const startIdx = Math.max(0, visibleRange.start - bufferSize);
+    const endIdx = Math.min(baseCombinedData.length, visibleRange.end + bufferSize);
+    const visibleBarcodes = baseCombinedData
+      .slice(startIdx, endIdx)
+      .map(row => row["Barcode#"])
+      .filter(Boolean)
+      .slice(0, MAX_LISTENERS);
+
+    // Cleanup old listeners for barcodes no longer visible
     notesListenersRef.current.forEach((unsub, bc) => {
-      if (!barcodes.includes(bc)) {
+      if (!visibleBarcodes.includes(bc)) {
         unsub();
         notesListenersRef.current.delete(bc);
       }
     });
 
-    // Subscribe to each barcode
-    barcodes.forEach((bc) => {
+    // Subscribe to visible barcodes only
+    visibleBarcodes.forEach((bc) => {
       if (notesListenersRef.current.has(bc)) return;
+
       const ref = doc(db, "repairNotes", bc);
       const unsub = onSnapshot(
         ref,
         (snap) => {
-          if (isImportingRef.current) return; setNotesMap((prev) => {
+          if (isImportingRef.current) return;
+          
+          const noteData = snap.exists() 
+            ? {
+                meetingNote: snap.data().meetingNote || "",
+                requiresFollowUp: snap.data().requiresFollowUp || "",
+              }
+            : { meetingNote: "", requiresFollowUp: "" };
+
+          setNotesMap(prev => {
             const n = new Map(prev);
-            if (snap.exists()) {
-              const d = snap.data();
-              n.set(bc, {
-                meetingNote: d.meetingNote || "",
-                requiresFollowUp: d.requiresFollowUp || "",
-              });
-            } else {
-              n.set(bc, { meetingNote: "", requiresFollowUp: "" });
-            }
+            n.set(bc, noteData);
+            return n;
+          });
+          
+          setNotesCache(prev => {
+            const n = new Map(prev);
+            n.set(bc, noteData);
             return n;
           });
         },
@@ -561,13 +634,14 @@ const RepairTrackerSheet = () => {
       notesListenersRef.current.set(bc, unsub);
     });
 
+    // Merge notes using cache for non-visible rows
     const merged = baseCombinedData.map((row) => {
       const bc = row["Barcode#"];
-      const notes = notesMap.get(bc);
+      const notes = notesMap.get(bc) || notesCache.get(bc) || { meetingNote: "", requiresFollowUp: "" };
       return {
         ...row,
-        "Meeting Note": notes?.meetingNote || "",
-        "Requires Follow Up": notes?.requiresFollowUp || "",
+        "Meeting Note": notes.meetingNote,
+        "Requires Follow Up": notes.requiresFollowUp,
       };
     });
     setCombinedDataWithNotes(merged);
@@ -576,7 +650,15 @@ const RepairTrackerSheet = () => {
       notesListenersRef.current.forEach((unsub) => unsub());
       notesListenersRef.current.clear();
     };
-  }, [baseCombinedData, notesMap]);
+  }, [baseCombinedData, notesMap, visibleRange, notesCache]);
+
+  // Clean up listeners when switching away from combined tab
+  useEffect(() => {
+    if (activeTab !== "combined") {
+      notesListenersRef.current.forEach(unsub => unsub());
+      notesListenersRef.current.clear();
+    }
+  }, [activeTab]);
 
   // ---------- Derived UI values ----------
   const getCurrentData = useCallback(() => {
@@ -597,18 +679,23 @@ const RepairTrackerSheet = () => {
   const columns =
     currentData.length > 0 ? Object.keys(currentData[0]).filter((c) => !c.startsWith("_")) : [];
 
-  // Unique locations - depends on actual data, not function
   const uniqueLocations = useMemo(() => {
     const s = new Set();
-    const rows = getCurrentData();
-    rows.forEach(r => {
-      const loc = r["Location"] || r["Repair Location"];
-      if (loc && String(loc).trim()) s.add(String(loc).trim());
-    });
+    if (activeTab === "combined" || activeTab === "reports") {
+      reportData.forEach(r => {
+        const loc = r["Repair Location"];
+        if (loc && String(loc).trim()) s.add(String(loc).trim());
+      });
+    }
+    if (activeTab === "combined" || activeTab === "tickets") {
+      ticketData.forEach(r => {
+        const loc = r["Location"];
+        if (loc && String(loc).trim()) s.add(String(loc).trim());
+      });
+    }
     return Array.from(s).sort();
-  }, [activeTab, ticketData, reportData, combinedDataWithNotes]);
+  }, [reportData, ticketData, activeTab]);
 
-  // Categories and PMs
   const [allCategories, uniquePMs] = useMemo(() => {
     const cats = new Set();
     const pms = new Set();
@@ -652,6 +739,72 @@ const RepairTrackerSheet = () => {
     a.download = `category_mapping_${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const importNotesFromExcel = async (file) => {
+    if (!file) return;
+    setIsImporting(true);
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
+
+      const norm = (v) => String(v ?? "").trim();
+      const getRow = (r) => {
+        const barcode =
+          norm(r["Barcode#"] || r["Barcode"] || r["BARCODE#"] || r["barcode"]);
+        const meetingNote =
+          r["Meeting Note"] ?? r["MeetingNote"] ?? r["Meeting_Notes"] ?? "";
+        const requiresFollowUp =
+          r["Requires Follow Up"] ??
+          r["RequiresFollowUp"] ??
+          r["Follow Up"] ??
+          r["FollowUp"] ??
+          "";
+        return {
+          barcode,
+          meetingNote: String(meetingNote),
+          requiresFollowUp: String(requiresFollowUp),
+        };
+      };
+
+      const byBarcode = new Map();
+      for (const raw of rows) {
+        const { barcode, meetingNote, requiresFollowUp } = getRow(raw);
+        if (!barcode) continue;
+        byBarcode.set(barcode, { barcode, meetingNote, requiresFollowUp });
+      }
+      const deduped = Array.from(byBarcode.values());
+
+      const chunkSize = 400;
+      let written = 0;
+      for (let i = 0; i < deduped.length; i += chunkSize) {
+        const slice = deduped.slice(i, i + chunkSize);
+        const batch = writeBatch(db);
+        for (const { barcode, meetingNote, requiresFollowUp } of slice) {
+          const ref = doc(db, "repairNotes", barcode);
+          batch.set(
+            ref,
+            {
+              barcode,
+              meetingNote,
+              requiresFollowUp,
+              lastUpdated: serverTimestamp(),
+            },
+            { merge: true }
+          );
+          written++;
+        }
+        await batch.commit();
+      }
+      alert(`Imported/merged notes for ${written} unique barcodes`);
+    } catch (e) {
+      console.error("Notes import failed:", e);
+      alert("Failed to import notes. Ensure the first sheet has columns: Barcode#, Meeting Note, Requires Follow Up.");
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const CategoryManager = () => {
@@ -830,7 +983,6 @@ const RepairTrackerSheet = () => {
   const filteredAndSortedData = useMemo(() => {
     let rows = getCurrentData();
 
-    // Location filter
     if (locationFilter) {
       rows = rows.filter((r) => {
         const loc = r["Location"] || r["Repair Location"];
@@ -838,7 +990,6 @@ const RepairTrackerSheet = () => {
       });
     }
 
-    // PM filter (combined only)
     if (activeTab === "combined" && pmFilter) {
       rows = rows.filter((r) => {
         if (pmFilter === "__unassigned__") return !r["Assigned To"] || r["Assigned To"] === "";
@@ -846,13 +997,11 @@ const RepairTrackerSheet = () => {
       });
     }
 
-    // Search
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
       rows = rows.filter((r) => Object.values(r).some((v) => String(v ?? "").toLowerCase().includes(q)));
     }
 
-    // Sort
     if (sortConfig.key) {
       rows = [...rows].sort((a, b) => {
         const av = a[sortConfig.key];
@@ -875,6 +1024,7 @@ const RepairTrackerSheet = () => {
     setEditingRowIndex(idx);
     setEditingRow(filteredAndSortedData[idx]);
   };
+  
   const closeRowEditor = () => {
     setEditingRow(null);
     setEditingRowIndex(null);
@@ -921,47 +1071,50 @@ const RepairTrackerSheet = () => {
                 </div>
               )}
               {lastSync && <span className="text-xs text-gray-500">Last sync: {lastSync.toLocaleTimeString()}</span>}
+              {activeTab === "combined" && (
+                <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                  Active listeners: {notesListenersRef.current.size} / {MAX_LISTENERS}
+                </span>
+              )}
             </div>
           </div>
 
           <div className="flex gap-2 items-center flex-wrap">
-  {!isAuthenticated ? (
-    <button
-      onClick={handleLogin}
-      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
-    >
-      <Cloud size={16} />
-      Sign in
-    </button>
-  ) : (
-    <>
-      <button
-        onClick={() => loadFromSharePoint(false)}
-        disabled={loading}
-        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
-      >
-        <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-        Refresh
-      </button>
-      <button
-        onClick={() => setShowCategoryManager(true)}
-        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
-      >
-        Manage Categories
-        {unmatchedCategories.length > 0 && (
-          <span className="ml-2 bg-red-500 text-white px-2 py-0.5 rounded-full text-xs">
-            {unmatchedCategories.length}
-          </span>
-        )}
-      </button>
-      <button onClick={handleLogout} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm">
-        Sign Out
-      </button>
-    </>
-  )}
+            {!isAuthenticated ? (
+              <button
+                onClick={handleLogin}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+              >
+                <Cloud size={16} />
+                Sign in
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => loadFromSharePoint(false)}
+                  disabled={loading}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
+                >
+                  <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+                  Refresh
+                </button>
+                <button
+                  onClick={() => setShowCategoryManager(true)}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
+                >
+                  Manage Categories
+                  {unmatchedCategories.length > 0 && (
+                    <span className="ml-2 bg-red-500 text-white px-2 py-0.5 rounded-full text-xs">
+                      {unmatchedCategories.length}
+                    </span>
+                  )}
+                </button>
+                <button onClick={handleLogout} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm">
+                  Sign Out
+                </button>
+              </>
+            )}
 
-
-            {/* Uploads (manual fallback) */}
             <label className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 cursor-pointer transition-colors text-sm">
               <Upload size={16} />
               Upload Mapping
@@ -996,35 +1149,12 @@ const RepairTrackerSheet = () => {
                 disabled={loading || isImporting}
               />
             </label>
-<label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-sm">
-              <Upload size={16} />
-              Upload Tickets
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={() => alert("Manual Excel upload not implemented here (SharePoint is source).")}
-                className="hidden"
-                disabled={loading}
-              />
-            </label>
-            <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-sm">
-              <Upload size={16} />
-              Upload Reports
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={() => alert("Manual Excel upload not implemented here (SharePoint is source).")}
-                className="hidden"
-                disabled={loading}
-              />
-            </label>
           </div>
         </div>
       </div>
 
       {/* Toolbar: Tabs on top, Search + Filters below */}
       <div className="bg-white border-b">
-        {/* Tabs Row */}
         <div className="flex items-center justify-between px-6 pt-3 border-b">
           <div className="flex">
             <button
@@ -1061,7 +1191,6 @@ const RepairTrackerSheet = () => {
             </button>
           </div>
           
-          {/* Export */}
           <button
             onClick={exportToCSV}
             disabled={getCurrentData().length === 0}
@@ -1072,21 +1201,21 @@ const RepairTrackerSheet = () => {
           </button>
         </div>
 
-        {/* Search and Filters Row */}
         <div className="flex items-center px-6 py-3 gap-3">
-          {/* Search */}
           <div className="flex-1 relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input
               type="text"
               placeholder="Search across all columns..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchInput}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+                debouncedSetSearch(e.target.value);
+              }}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
             />
           </div>
 
-          {/* Location filter */}
           <select
             value={locationFilter}
             onChange={(e) => setLocationFilter(e.target.value)}
@@ -1107,7 +1236,6 @@ const RepairTrackerSheet = () => {
             </button>
           )}
 
-          {/* PM filter only on Combined tab */}
           {activeTab === "combined" && (
             <>
               <select
@@ -1165,6 +1293,28 @@ const RepairTrackerSheet = () => {
                   <p className="text-sm text-purple-700">categories mapped</p>
                 </div>
               </div>
+              
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                <h3 className="font-semibold text-blue-900 mb-2">Memory Optimization Status</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Active Firestore Listeners:</span>
+                    <span className="font-mono font-bold">{notesListenersRef.current.size} / {MAX_LISTENERS}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Cached Notes:</span>
+                    <span className="font-mono font-bold">{notesCache.size}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Total Rows:</span>
+                    <span className="font-mono font-bold">{combinedDataWithNotes.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Filtered Rows:</span>
+                    <span className="font-mono font-bold">{filteredAndSortedData.length}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         ) : !hasData ? (
@@ -1182,56 +1332,12 @@ const RepairTrackerSheet = () => {
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow h-full overflow-auto">
-            <table className="w-full border-collapse">
-              <thead className="bg-gray-50 border-b sticky top-0 z-10">
-                <tr>
-                  {columns.map((col) => {
-                    const isEditable =
-                      activeTab === "combined" && (col === "Meeting Note" || col === "Requires Follow Up");
-                    return (
-                      <th
-                        key={col}
-                        onClick={() => handleSort(col)}
-                        className={`px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 bg-gray-50 whitespace-normal`}
-                      >
-                        <div className="flex items-center gap-2">
-                          {col}
-                          {isEditable && <span className="text-blue-500">✏️</span>}
-                          {sortConfig.key === col &&
-                            (sortConfig.direction === "asc" ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
-                        </div>
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y">
-                {filteredAndSortedData.map((row, idx) => {
-                  const hasAssignment = row["Assigned To"] && row["Assigned To"] !== "";
-                  const rowBg = activeTab === "combined" && !hasAssignment ? "bg-red-50" : "";
-                  const isEditable = activeTab === "combined";
-                  return (
-                    <tr
-                      key={idx}
-                      className={`${rowBg} ${isEditable ? "hover:bg-blue-50 cursor-pointer" : "hover:bg-gray-50"}`}
-                      onClick={() => isEditable && openRowEditor(idx)}
-                    >
-                      {columns.map((col) => (
-                        <td
-                          key={col}
-                          className="px-4 py-3 text-sm text-gray-900 whitespace-normal break-words"
-                          style={{ maxWidth: 300 }}
-                        >
-                          {String(row[col] ?? "")}
-                        </td>
-                      ))}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <VirtualizedTable
+            data={filteredAndSortedData}
+            columns={columns}
+            onRowClick={openRowEditor}
+            activeTab={activeTab}
+          />
         )}
       </div>
 

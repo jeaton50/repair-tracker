@@ -1,0 +1,161 @@
+
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Firestore Notes Importer (Strict Barcode Match)</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+      body { font-family: ui-sans-serif, system-ui, Arial; max-width: 900px; margin: 24px auto; padding: 0 12px; }
+      .btn { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:8px; border:1px solid #ccc; cursor:pointer; }
+      .primary { background:#2563eb; color:white; border-color:#2563eb; }
+      .muted { color:#555; }
+      .row { margin:12px 0; display:flex; align-items:center; gap:12px; flex-wrap: wrap; }
+      #status { margin-top:8px; font-size:12px; color:#2563eb; white-space:pre-wrap; }
+      code { background:#f4f4f5; padding:2px 6px; border-radius:4px; }
+      .box { border:1px solid #e5e7eb; border-radius:8px; padding:12px; }
+    </style>
+  </head>
+  <body>
+    <h1>Import Notes directly into Firestore</h1>
+    <p class="muted">Writes to <code>repairNotes/{BARCODE}</code> with fields <code>meetingNote</code>, <code>requiresFollowUp</code>. Uses a strict barcode normalizer: <strong>two letters + up to 6 digits =&gt; AA000000</strong>.</p>
+
+    <div class="box">
+      <h3>Setup</h3>
+      <ol>
+        <li>Fill in your Firebase config below.</li>
+        <li>Open this file in Chrome.</li>
+        <li>Click <b>Sign in with Google</b> (use an account allowed to write Firestore).</li>
+        <li>Select your Excel/CSV (first sheet must include columns <code>Barcode#</code>, <code>Meeting Note</code>, <code>Requires Follow Up</code>).</li>
+      </ol>
+    </div>
+
+    <div class="row">
+      <button id="login" class="btn">Sign in with Google</button>
+      <span id="user" class="muted"></span>
+    </div>
+
+    <div class="row">
+      <input id="file" type="file" accept=".xlsx,.xls,.csv" />
+      <button id="import" class="btn primary">Import to Firestore</button>
+      <div id="status"></div>
+    </div>
+
+    <!-- Firebase Web SDK -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+      import {
+        getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged
+      } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+      import {
+        getFirestore, doc, writeBatch, serverTimestamp
+      } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+      // Sheet parsing
+      import * as XLSX from "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm";
+
+      // TODO: paste your Firebase config here
+      const firebaseConfig = {
+        apiKey: "AIzaSyGCtJKb9tfptKFml0BDcCUeWNMOU_L6uSDs",
+        authDomain: "repair-tracker-add33.firebaseapp.com",
+        projectId: "repair-tracker-add33",
+        storageBucket: "repair-tracker-add33.firebasestorage.app",
+        messagingSenderId: "105779807489",
+        appId: "1:105779807489:web:83bc4a86c67535f624c700",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+      const provider = new GoogleAuthProvider();
+
+      const $login = document.getElementById('login');
+      const $user = document.getElementById('user');
+      const $file = document.getElementById('file');
+      const $import = document.getElementById('import');
+      const $status = document.getElementById('status');
+
+      function setStatus(msg) { $status.textContent = msg; }
+      function appendStatus(msg) { $status.textContent += "\n" + msg; }
+
+      // STRICT normalizer: AA + up to 6 digits -> AA000000
+      function normalizeBarcode(raw) {
+        if (raw == null) return null;
+        let s = String(raw).trim().toUpperCase();
+        const m = s.match(/^([A-Z]{2})(\d{1,6})$/);
+        if (!m) return null;
+        const prefix = m[1];
+        const num = m[2].padStart(6, "0");
+        return prefix + num;
+      }
+
+      const norm = (v) => String(v ?? "").trim();
+      function getRow(r) {
+        const rawBarcode = r["Barcode#"] ?? r["Barcode"] ?? r["BARCODE#"] ?? r["barcode"];
+        const barcode = normalizeBarcode(rawBarcode);
+        const meetingNote = r["Meeting Note"] ?? r["MeetingNote"] ?? r["Meeting_Notes"] ?? "";
+        const requiresFollowUp = r["Requires Follow Up"] ?? r["RequiresFollowUp"] ?? r["Follow Up"] ?? r["FollowUp"] ?? "";
+        return {
+          barcode,
+          meetingNote: String(meetingNote ?? ""),
+          requiresFollowUp: String(requiresFollowUp ?? ""),
+          _rawBarcode: rawBarcode
+        };
+      }
+
+      $login.onclick = async () => {
+        await signInWithPopup(auth, provider);
+      };
+
+      onAuthStateChanged(auth, (u) => {
+        $user.textContent = u ? `Signed in as ${u.email}` : '';
+      });
+
+      $import.onclick = async () => {
+        const file = $file.files?.[0];
+        if (!file) { alert("Pick an Excel/CSV file first."); return; }
+
+        setStatus("Reading file…");
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
+
+        // Map last row per barcode; collect invalids
+        const byBarcode = new Map();
+        const invalid = [];
+        for (const raw of rows) {
+          const rec = getRow(raw);
+          if (!rec.barcode) {
+            invalid.push(rec._rawBarcode ?? "(blank)");
+            continue;
+          }
+          byBarcode.set(rec.barcode, rec);
+        }
+        const data = Array.from(byBarcode.values());
+        const chunkSize = 400;
+        let written = 0;
+
+        setStatus(`Preparing to write ${data.length} records…`);
+        if (invalid.length) appendStatus(`Skipped ${invalid.length} rows with invalid barcodes (showing up to 10):\n` + invalid.slice(0,10).join(", "));
+
+        for (let i = 0; i < data.length; i += chunkSize) {
+          const slice = data.slice(i, i + chunkSize);
+          const batch = writeBatch(db);
+          for (const { barcode, meetingNote, requiresFollowUp } of slice) {
+            batch.set(
+              doc(db, "repairNotes", barcode),
+              { barcode, meetingNote, requiresFollowUp, lastUpdated: serverTimestamp() },
+              { merge: true }
+            );
+            written++;
+          }
+          appendStatus(`Committing ${Math.min(i + chunkSize, data.length)} / ${data.length}…`);
+          await batch.commit();
+        }
+
+        appendStatus(`\nDone. Imported/merged ${written} unique barcodes.`);
+        alert(`Done. Imported/merged ${written} barcodes.\nInvalid skipped: ${invalid.length}`);
+      };
+    </script>
+  </body>
+</html>
