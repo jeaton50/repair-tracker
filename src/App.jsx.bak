@@ -813,7 +813,7 @@ const RepairTrackerSheet = () => {
     XLSX.writeFile(wb, "notes_import_template.xlsx");
   };
 
-  const importNotesFromExcel = async (file) => {
+  const importNotesFromExcel = async (file, skipEmptyNotes = false) => {
     if (!file) return;
     setIsImporting(true);
     try {
@@ -852,6 +852,7 @@ const RepairTrackerSheet = () => {
 
       let skipped = 0;
       let emptyNotes = 0;
+      let skippedEmpty = 0;
       const byBarcode = new Map();
       
       for (const raw of rows) {
@@ -862,8 +863,14 @@ const RepairTrackerSheet = () => {
           continue;
         }
         
-        if (!meetingNote && !requiresFollowUp) {
+        const isEmpty = !meetingNote && !requiresFollowUp;
+        
+        if (isEmpty) {
           emptyNotes++;
+          if (skipEmptyNotes) {
+            skippedEmpty++;
+            continue; // Skip this row entirely
+          }
         }
         
         byBarcode.set(barcode, { barcode, meetingNote, requiresFollowUp });
@@ -873,6 +880,27 @@ const RepairTrackerSheet = () => {
       console.log(`Processed: ${deduped.length} unique barcodes`);
       console.log(`Skipped: ${skipped} rows (no barcode)`);
       console.log(`Empty notes: ${emptyNotes} rows (have barcode but no notes)`);
+      if (skipEmptyNotes) {
+        console.log(`Skipped empty: ${skippedEmpty} rows (empty notes were not imported)`);
+      }
+
+      // If there are empty notes and user didn't specify to skip, ask them
+      if (emptyNotes > 0 && !skipEmptyNotes) {
+        const shouldSkip = window.confirm(
+          `⚠️ Warning: ${emptyNotes} rows have barcodes but NO notes.\n\n` +
+          `Importing these will CLEAR existing notes for those barcodes.\n\n` +
+          `Do you want to SKIP these empty rows?\n\n` +
+          `• Click OK to SKIP empty rows (recommended)\n` +
+          `• Click Cancel to import anyway (will clear existing notes)`
+        );
+        
+        if (shouldSkip) {
+          // Re-run import with skipEmptyNotes = true
+          setIsImporting(false);
+          await importNotesFromExcel(file, true);
+          return;
+        }
+      }
 
       const chunkSize = 400;
       let written = 0;
@@ -899,8 +927,8 @@ const RepairTrackerSheet = () => {
       const message = `✅ Import Complete!\n\n` +
         `• Imported: ${written} unique barcodes\n` +
         `• Skipped: ${skipped} rows (no barcode)\n` +
-        `• Empty notes: ${emptyNotes} rows\n\n` +
-        `Check browser console (F12) for detailed info.`;
+        (skipEmptyNotes ? `• Skipped empty: ${skippedEmpty} rows\n` : `• Empty notes: ${emptyNotes} rows (cleared existing notes)\n`) +
+        `\nCheck browser console (F12) for detailed info.`;
       
       alert(message);
       console.log("Import successful!");
