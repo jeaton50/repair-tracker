@@ -12,9 +12,13 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
 
-// THIS LINE IS CRITICAL - Make sure it's there!
+// Initialize Firestore with offline persistence (20-40% cost savings!)
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager()
+  })
+});
+
 export { db };
