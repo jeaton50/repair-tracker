@@ -16,7 +16,7 @@ const app = initializeApp(firebaseConfig);
 
 // Initialize Firestore with offline persistence (20-40% cost savings!)
 const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
+ 
     tabManager: persistentMultipleTabManager()
   })
 });

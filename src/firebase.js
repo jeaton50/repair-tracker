@@ -14,11 +14,10 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore with offline persistence (20-40% cost savings!)
+// 🎯 OPTIMIZATION: Enable offline persistence with multi-tab support
+// This reduces reads by 20-40% by caching data locally
 const db = initializeFirestore(app, {
- 
+  localCache: persistentLocalCache({
     tabManager: persistentMultipleTabManager()
   })
 });
-
-export { db };
