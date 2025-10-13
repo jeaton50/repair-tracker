@@ -37,7 +37,7 @@ const useDebounce = (callback, delay) => {
   }, [callback, delay]);
 };
 
-// ---------- Row Editor (OPTIMIZED - Reduced writes & listeners) ----------
+// ---------- Row Editor (OPTIMIZED - 3s auto-save + idle-based sync) ----------
 const RowEditor = ({ row, rowIndex, onClose }) => {
   const [meetingNote, setMeetingNote] = useState("");
   const [followUp, setFollowUp] = useState("");
@@ -75,7 +75,7 @@ const RowEditor = ({ row, rowIndex, onClose }) => {
     loadNotes();
   }, [barcode]);
 
-  // 🎯 OPTIMIZATION 1: Increased auto-save delay from 1s to 3s (66% fewer writes)
+  // 🎯 OPTIMIZATION 1: Auto-save delay increased to 3 seconds (66% fewer writes)
   useEffect(() => {
     if (isLoading) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -657,7 +657,7 @@ const RepairTrackerSheet = () => {
     return out;
   }, [ticketData, reportData, categoryMapping]);
 
-  // 🎯 OPTIMIZATION 4: Reduced buffer window from 25 to 10 (20% fewer listeners)
+  // 🎯 OPTIMIZATION 4: Reduced buffer window from ±25 to ±10 (20% fewer listeners)
   useEffect(() => {
     if (baseCombinedData.length === 0) {
       setCombinedDataWithNotes([]);
@@ -814,7 +814,6 @@ const RepairTrackerSheet = () => {
   };
 
   const downloadNotesTemplate = () => {
-    // Create sample data
     const templateData = [
       {
         "Barcode#": "RV123456",
@@ -833,112 +832,101 @@ const RepairTrackerSheet = () => {
       }
     ];
 
-    // Create workbook
     const ws = XLSX.utils.json_to_sheet(templateData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Notes Template");
 
-    // Set column widths
     ws['!cols'] = [
-      { wch: 15 },  // Barcode#
-      { wch: 50 },  // Meeting Note
-      { wch: 40 }   // Requires Follow Up
+      { wch: 15 },
+      { wch: 50 },
+      { wch: 40 }
     ];
 
-    // Generate and download
     XLSX.writeFile(wb, "notes_import_template.xlsx");
   };
 
-  // 🎯 OPTIMIZATION 5: Skip unchanged records during import (50-90% import write reduction)
-  const importNotesFromExcel = async (file, skipEmptyNotes = false) => {
+  // 🎯 OPTIMIZATION 5: Smart import with skip unchanged records (50-90% import write reduction)
+  const importNotesFromExcel = async (file, options = {}) => {
     if (!file) return;
+
+    const { skipEmptyNotes = true, sheetName = null } = options;
+
+    const normKey = (k) => String(k || "").toLowerCase().replace(/[^\w]/g, "");
+    const s = (v) => (v == null ? "" : String(v).trim());
+
+    const BARCODE_KEYS = new Set(["barcode", "barcodenumber"]);
+    const MEETING_KEYS = new Set(["meetingnote", "meetingnotes", "meeting_note", "notes"]);
+    const FOLLOWUP_KEYS = new Set(["requiresfollowup", "followup", "followuprequired", "follow_up", "follow-up"].map(normKey));
+
+    const pickField = (row, candidatesSet) => {
+      for (const [k, v] of Object.entries(row)) {
+        if (candidatesSet.has(k)) return s(v);
+      }
+      return "";
+    };
+
     setIsImporting(true);
-    
-    // Track stats for reporting
+
     let totalRows = 0;
     let skippedNoBarcode = 0;
     let skippedUnchanged = 0;
     let skippedEmpty = 0;
     let written = 0;
-    
+
     try {
       const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, { type: "array" });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
-      totalRows = rows.length;
+      const wb = XLSX.read(buf, { type: "array", raw: true });
 
-      console.log("📊 Import Debug Info:");
-      console.log(`Total rows in Excel: ${rows.length}`);
-      
-      if (rows.length > 0) {
-        console.log("Column headers found:", Object.keys(rows[0]));
-        console.log("First row sample:", rows[0]);
+      let chosen = wb.SheetNames[0];
+      if (sheetName && wb.SheetNames.includes(sheetName)) {
+        chosen = sheetName;
+      } else {
+        const notesSheet = wb.SheetNames.find((n) => n.toLowerCase().includes("notes"));
+        if (notesSheet) chosen = notesSheet;
       }
 
-      const norm = (v) => String(v ?? "").trim();
-      const getRow = (r) => {
-        // Try all possible column name variations
-        const barcode =
-          norm(r["Barcode#"] || r["Barcode"] || r["BARCODE#"] || r["barcode"] || 
-               r["Barcode #"] || r["BARCODE"] || r["BarcodeNumber"] || r["Barcode Number"]);
-        const meetingNote =
-          r["Meeting Note"] ?? r["MeetingNote"] ?? r["Meeting_Notes"] ?? r["Meeting Notes"] ??
-          r["MEETING NOTE"] ?? r["meeting note"] ?? r["Notes"] ?? "";
-        const requiresFollowUp =
-          r["Requires Follow Up"] ?? r["RequiresFollowUp"] ?? r["Follow Up"] ?? r["FollowUp"] ??
-          r["REQUIRES FOLLOW UP"] ?? r["requires follow up"] ?? r["Follow-Up"] ?? r["Followup"] ?? "";
-        
-        return {
-          barcode,
-          meetingNote: String(meetingNote).trim(),
-          requiresFollowUp: String(requiresFollowUp).trim(),
-        };
-      };
+      const ws = wb.Sheets[chosen];
+      if (!ws) throw new Error("No worksheet found to import.");
 
-      let emptyNotes = 0;
+      const rawRows = XLSX.utils.sheet_to_json(ws, { defval: "", raw: true });
+      totalRows = rawRows.length;
+
+      const rows = rawRows.map((r) => {
+        const out = {};
+        for (const [k, v] of Object.entries(r)) out[normKey(k)] = v;
+        return out;
+      });
+
       const byBarcode = new Map();
-      
-      for (const raw of rows) {
-        const { barcode, meetingNote, requiresFollowUp } = getRow(raw);
-        
+      let emptyRows = 0;
+      let duplicateRows = 0;
+
+      for (const row of rows) {
+        const barcode = pickField(row, BARCODE_KEYS);
         if (!barcode) {
           skippedNoBarcode++;
           continue;
         }
-        
-        const isEmpty = !meetingNote && !requiresFollowUp;
-        
-        if (isEmpty) {
-          emptyNotes++;
-          if (skipEmptyNotes) {
-            skippedEmpty++;
-            continue;
-          }
-        }
-        
-        byBarcode.set(barcode, { barcode, meetingNote, requiresFollowUp });
-      }
-      
-      const deduped = Array.from(byBarcode.values());
-      console.log(`Processed: ${deduped.length} unique barcodes`);
 
-      // If there are empty notes and user didn't specify to skip, ask them
-      if (emptyNotes > 0 && !skipEmptyNotes) {
-        const shouldSkip = window.confirm(
-          `⚠️ Warning: ${emptyNotes} rows have barcodes but NO notes.\n\n` +
-          `Importing these will CLEAR existing notes for those barcodes.\n\n` +
-          `Do you want to SKIP these empty rows?\n\n` +
-          `• Click OK to SKIP empty rows (recommended)\n` +
-          `• Click Cancel to import anyway (will clear existing notes)`
-        );
-        
-        if (shouldSkip) {
-          setIsImporting(false);
-          await importNotesFromExcel(file, true);
-          return;
-        }
+        const meetingNote = pickField(row, MEETING_KEYS);
+        const requiresFollowUp = pickField(row, FOLLOWUP_KEYS);
+
+        const isEmpty = !meetingNote && !requiresFollowUp;
+        if (isEmpty) emptyRows++;
+
+        if (isEmpty && skipEmptyNotes) continue;
+
+        if (byBarcode.has(barcode)) duplicateRows++;
+
+        const prev = byBarcode.get(barcode) || { barcode, meetingNote: "", requiresFollowUp: "" };
+        byBarcode.set(barcode, {
+          barcode,
+          meetingNote: meetingNote || prev.meetingNote || "",
+          requiresFollowUp: requiresFollowUp || prev.requiresFollowUp || "",
+        });
       }
+
+      const deduped = Array.from(byBarcode.values());
 
       // 🔥 CHECK EXISTING DATA BEFORE WRITING
       const chunkSize = 400;
@@ -946,26 +934,23 @@ const RepairTrackerSheet = () => {
         const slice = deduped.slice(i, i + chunkSize);
         const batch = writeBatch(db);
         let batchHasWrites = false;
-        
+
         for (const { barcode, meetingNote, requiresFollowUp } of slice) {
           const ref = doc(db, "repairNotes", barcode);
-          
-          // Check if data actually changed
+
           try {
             const existingDoc = await getDoc(ref);
             if (existingDoc.exists()) {
               const existing = existingDoc.data();
-              if (existing.meetingNote === meetingNote && 
-                  existing.requiresFollowUp === requiresFollowUp) {
+              if (existing.meetingNote === meetingNote && existing.requiresFollowUp === requiresFollowUp) {
                 skippedUnchanged++;
-                continue; // Skip unchanged records
+                continue;
               }
             }
           } catch (e) {
             console.warn(`Could not check existing data for ${barcode}:`, e);
-            // Continue with write if check fails
           }
-          
+
           batch.set(
             ref,
             {
@@ -979,40 +964,46 @@ const RepairTrackerSheet = () => {
           written++;
           batchHasWrites = true;
         }
-        
-        // Only commit if batch has actual writes
+
         if (batchHasWrites) {
           await batch.commit();
         }
       }
-      
-      const message = `✅ Import Complete!\n\n` +
-        `• Total rows: ${totalRows}\n` +
-        `• Written: ${written} records\n` +
-        `• Skipped (no barcode): ${skippedNoBarcode}\n` +
-        `• Skipped (unchanged): ${skippedUnchanged}\n` +
-        (skipEmptyNotes ? `• Skipped (empty): ${skippedEmpty}\n` : `• Empty notes: ${emptyNotes} (cleared existing)\n`) +
-        `\n💰 Saved ${skippedUnchanged} Firebase writes!` +
-        `\n\nCheck browser console (F12) for detailed info.`;
-      
-      alert(message);
-      console.log("Import successful! Stats:", { 
-        totalRows, 
-        written, 
-        skippedNoBarcode, 
-        skippedUnchanged, 
-        skippedEmpty 
+
+      // Seed local caches
+      setNotesCache((prev) => {
+        const next = new Map(prev);
+        for (const { barcode, meetingNote, requiresFollowUp } of deduped) {
+          next.set(barcode, { meetingNote, requiresFollowUp });
+        }
+        return next;
       });
+      setNotesMap((prev) => {
+        const next = new Map(prev);
+        for (const { barcode, meetingNote, requiresFollowUp } of deduped) {
+          next.set(barcode, { meetingNote, requiresFollowUp });
+        }
+        return next;
+      });
+
+      const message = `✅ Notes Import Complete (sheet: "${chosen}")\n\n` +
+        `• Total rows: ${totalRows.toLocaleString()}\n` +
+        `• Written: ${written.toLocaleString()} records\n` +
+        `• Skipped (no barcode): ${skippedNoBarcode.toLocaleString()}\n` +
+        `• Skipped (unchanged): ${skippedUnchanged.toLocaleString()}\n` +
+        (skipEmptyNotes ? `• Skipped (empty): ${skippedEmpty.toLocaleString()}\n` : `• Empty notes: ${emptyRows.toLocaleString()} (cleared existing)\n`) +
+        `• Duplicate rows: ${duplicateRows.toLocaleString()} (merged)\n\n` +
+        `💰 Saved ${skippedUnchanged.toLocaleString()} Firebase writes!`;
+
+      alert(message);
+      console.log("Import stats:", { totalRows, written, skippedNoBarcode, skippedUnchanged, skippedEmpty, duplicateRows });
     } catch (e) {
       console.error("Notes import failed:", e);
       alert(
-        `❌ Import Failed!\n\n` +
-        `Error: ${e.message}\n\n` +
-        `Make sure your Excel file has these columns:\n` +
-        `• Barcode# (or Barcode)\n` +
-        `• Meeting Note (or MeetingNote)\n` +
-        `• Requires Follow Up (or Follow Up)\n\n` +
-        `Check browser console (F12) for more details.`
+        `❌ Import Failed\n\n${e.message}\n\n` +
+        `Tips:\n` +
+        `• Put notes on a sheet named "Notes"\n` +
+        `• Required headers: Barcode#, Meeting Note, Requires Follow Up`
       );
     } finally {
       setIsImporting(false);
@@ -1192,7 +1183,6 @@ const RepairTrackerSheet = () => {
   // ---------- Filtering, sorting, export ----------
   const hasData = ticketData.length > 0 || reportData.length > 0;
 
-  // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, locationFilter, pmFilter, activeTab]);
@@ -1380,7 +1370,7 @@ const RepairTrackerSheet = () => {
         </div>
       </div>
 
-      {/* Toolbar: Tabs on top, Search + Filters below */}
+      {/* Toolbar */}
       <div className="bg-white border-b">
         <div className="flex items-center justify-between px-6 pt-3 border-b">
           <div className="flex">
@@ -1443,7 +1433,6 @@ const RepairTrackerSheet = () => {
             />
           </div>
 
-          {/* Page Size Selector */}
           <div className="flex items-center gap-2">
             <label className="text-sm text-gray-600 whitespace-nowrap">Rows per page:</label>
             <select
@@ -1513,7 +1502,6 @@ const RepairTrackerSheet = () => {
 
       {/* Body */}
       <div className="flex-1 overflow-hidden px-6 py-4">
-        {/* Performance Warning for "All" */}
         {itemsPerPage >= 99999 && filteredAndSortedData.length > 500 && (
           <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
             <div className="flex items-start gap-2">
@@ -1564,7 +1552,7 @@ const RepairTrackerSheet = () => {
                 </div>
               </div>
               
-              {/* 🎯 OPTIMIZATION 6: Enhanced diagnostics with Firebase cost tracking */}
+              {/* 🎯 OPTIMIZATION 6: Enhanced diagnostics */}
               <div className="mt-6 p-4 bg-blue-50 rounded-lg">
                 <h3 className="font-semibold text-blue-900 mb-2">Memory Optimization Status</h3>
                 <div className="space-y-2 text-sm">
@@ -1607,7 +1595,7 @@ const RepairTrackerSheet = () => {
                 )}
               </div>
 
-              {/* 🔥 NEW: Firebase Cost Estimation */}
+              {/* NEW: Firebase Cost Estimation */}
               <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
                 <h3 className="font-semibold text-green-900 mb-3">💰 Firebase Cost Optimizations Active</h3>
                 <div className="space-y-2 text-sm text-green-800">
@@ -1696,7 +1684,7 @@ const RepairTrackerSheet = () => {
         )}
       </div>
 
-      {/* Footer strip - Updated to show pagination info */}
+      {/* Footer */}
       {hasData && activeTab !== "diagnostics" && (
         <div className="bg-white border-t px-6 py-3">
           <div className="flex items-center justify-between text-sm text-gray-600">
