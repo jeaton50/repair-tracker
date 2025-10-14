@@ -1,4 +1,4 @@
-// src/App.jsx - SHAREPOINT VERSION (No Firebase3426) + Quick Edit wiring
+// src/App.jsx - SHAREPOINT VERSION (No Firebase3426) + Quick Edit wiring1
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { Client } from "@microsoft/microsoft-graph-client";
 import { PublicClientApplication } from "@azure/msal-browser";
