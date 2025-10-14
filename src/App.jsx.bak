@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import { Client } from "@microsoft/microsoft-graph-client";
 import { PublicClientApplication } from "@azure/msal-browser";
 import { msalConfig, loginRequest, graphConfig } from "./authConfig";
-import OneDriveService from "./oneDriveService.js";
+import OneDriveService from "./onedriveservice.js";
 import SharePointNotesService from "./sharepointnotesservice.js";
 import * as XLSX from "xlsx";
 import { Search, Download, ChevronDown, ChevronUp, Upload, FileSpreadsheet, RefreshCw, Cloud, ChevronLeft, ChevronRight, Save } from "lucide-react";
