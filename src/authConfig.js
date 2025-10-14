@@ -15,11 +15,17 @@ export const msalConfig = {
   },
 };
 
+// Request WRITE scopes (admin consent required) so uploads work.
 export const loginRequest = {
   scopes: [
-    "openid", "profile", "email", "offline_access",
+    "openid",
+    "profile",
+    "email",
+    "offline_access",
     "User.Read",
-    "Files.Read.All",   // needed to read SharePoint libraries the user can access
+    // Write permissions for SharePoint/OneDrive via Graph:
+    "Files.ReadWrite.All",
+    "Sites.ReadWrite.All",
   ],
 };
 
