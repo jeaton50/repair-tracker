@@ -142,25 +142,34 @@ export default class OneDriveService {
 
   /**
    * Convert an XLSX ArrayBuffer into an array of row objects.
-   * **Keeps your original assumption**:
-   *   - Row 2 (index 1) contains headers
-   *   - Data starts at row 3
+   * Dynamically detects the header row as the **first non-empty row**,
+   * so it works whether row 1 is blank or not.
    */
   _xlsxToRows(arrayBuffer) {
     const wb = XLSX.read(arrayBuffer, { type: "array", cellDates: true });
     const sheet = wb.Sheets[wb.SheetNames[0]];
     const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
 
-    if (raw.length < 2) return [];
+    if (!raw.length) return [];
 
-    const headers = (raw[1] || [])
-      .map(h => String(h || "").trim())
+    // Find first non-empty row to treat as headers
+    const headerIdx = raw.findIndex(
+      (r) => Array.isArray(r) && r.some((c) => c != null && String(c).trim() !== "")
+    );
+    if (headerIdx === -1) return [];
+
+    const headers = (raw[headerIdx] || [])
+      .map((h) => String(h || "").trim())
       .filter(Boolean);
 
+    if (!headers.length) return [];
+
+    const startIdx = headerIdx + 1;
+
     return raw
-      .slice(2)
-      .filter(row => row && row.some(c => c !== "" && c != null))
-      .map(row => Object.fromEntries(headers.map((h, i) => [h, row[i] ?? ""])));
+      .slice(startIdx)
+      .filter((row) => row && row.some((c) => c != null && String(c).trim() !== ""))
+      .map((row) => Object.fromEntries(headers.map((h, i) => [h, row[i] ?? ""])));
   }
 
   /**
