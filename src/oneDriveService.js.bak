@@ -106,7 +106,7 @@ export default class OneDriveService {
   /* ------------------------------ Local helpers ----------------------------- */
 
   /**
-   * Convert an XLSX ArrayBuffer into an array of row objects.
+   * Convert an XLSX ArrayBuffer in to an array of row objects.
    * Assumes: row 2 (index 1) contains headers, data starts at row 3.
    */
   _xlsxToRows(arrayBuffer) {
