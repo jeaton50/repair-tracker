@@ -134,8 +134,8 @@ export default class OneDriveService {
     hostname,
     sitePath,
     fileRelativePath,
-    sheetName,       // optional: preferred sheet to read
-    expectedHeaders, // optional: headers to match
+    sheetName,         // optional: preferred sheet to read
+    expectedHeaders,   // optional: headers to match (omit for tickets/reports)
   }) {
     const content = await this._getSpBinary({ hostname, sitePath, fileRelativePath });
     return this._xlsxToRows(content, { sheetName, expectedHeaders }); // ArrayBuffer -> rows
@@ -167,33 +167,47 @@ export default class OneDriveService {
 
   /**
    * Convert an XLSX ArrayBuffer into array of row objects.
-   * - Auto-detects header row within the first 5 rows.
-   * - Optionally targets a specific sheet and set of expected headers.
+   * - If `expectedHeaders` is provided: find that header row (first 5 rows).
+   * - Otherwise: use the first non-empty row as headers (generic mode).
+   * - If `sheetName` is provided, try that first; otherwise scan all sheets.
    */
   _xlsxToRows(arrayBuffer, opts = {}) {
     const expected = (opts.expectedHeaders && opts.expectedHeaders.length)
       ? opts.expectedHeaders
-      : ["Barcode#", "Meeting Note", "Requires Follow Up", "Last Updated"];
+      : null; // generic mode by default
 
     const wb = XLSX.read(arrayBuffer, { type: "array", cellDates: true });
 
     const scanSheet = (sheet) => {
       const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
       if (!raw.length) return [];
-      // Look for a header row (first 5 rows) that contains all expected headers (case-insensitive)
-      for (let i = 0; i < Math.min(5, raw.length); i++) {
-        const hdr = (raw[i] || []).map(h => String(h || "").trim());
-        const norm = hdr.map(h => h.toLowerCase());
-        const ok = expected.every(e => norm.includes(String(e).toLowerCase()));
-        if (ok) {
-          const start = i + 1;
-          return raw
-            .slice(start)
-            .filter(r => r && r.some(c => c !== "" && c != null))
-            .map(r => Object.fromEntries(hdr.map((h, idx) => [h, r[idx] ?? ""])));
+
+      // Header-match mode (when expected headers are provided)
+      if (expected) {
+        for (let i = 0; i < Math.min(5, raw.length); i++) {
+          const hdr = (raw[i] || []).map(h => String(h || "").trim());
+          const norm = hdr.map(h => h.toLowerCase());
+          const ok = expected.every(e => norm.includes(String(e).toLowerCase()));
+          if (ok) {
+            const start = i + 1;
+            return raw
+              .slice(start)
+              .filter(r => r && r.some(c => c !== "" && c != null))
+              .map(r => Object.fromEntries(hdr.map((h, idx) => [h, r[idx] ?? ""])));
+          }
         }
+        // If nothing matched, fall through to generic parsing below.
       }
-      return [];
+
+      // Generic mode: pick the first non-empty row as headers.
+      const headerIdx = raw.findIndex(r => Array.isArray(r) && r.some(c => c !== "" && c != null));
+      if (headerIdx === -1) return [];
+      const hdr = (raw[headerIdx] || []).map(h => String(h || "").trim());
+      const start = headerIdx + 1;
+      return raw
+        .slice(start)
+        .filter(r => r && r.some(c => c !== "" && c != null))
+        .map(r => Object.fromEntries(hdr.map((h, idx) => [h, r[idx] ?? ""])));
     };
 
     // Try preferred sheet first (if provided), then any sheet that matches.

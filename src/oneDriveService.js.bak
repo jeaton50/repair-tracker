@@ -7,22 +7,6 @@ import { ResponseType } from "@microsoft/microsoft-graph-client";
  * Scopes needed:
  *  - Files.Read.All (read)
  *  - Files.ReadWrite.All (upload/replace)
- *
- * Example (read Excel):
- *   const ods = new OneDriveService(graphClient);
- *   const rows = await ods.readExcelFromSharePoint({
- *     hostname: "rentexinc.sharepoint.com",
- *     sitePath: "/sites/ProductManagers",
- *     fileRelativePath: "General/Repairs/RepairTracker/ticket_list.xlsx"
- *   });
- *
- * Example (upload Excel from ArrayBuffer/Blob):
- *   await ods.uploadExcelToSharePoint({
- *     hostname: "rentexinc.sharepoint.com",
- *     sitePath: "/sites/ProductManagers",
- *     fileRelativePath: "General/Repairs/RepairTracker/ticket_list.xlsx",
- *     fileContent: arrayBufferOrBlob
- *   });
  */
 export default class OneDriveService {
   constructor(client) {
@@ -33,8 +17,6 @@ export default class OneDriveService {
 
   // Resolve site + default "Documents" drive
   async _getSiteAndDefaultDrive(hostname, sitePath) {
-    // hostname: "rentexinc.sharepoint.com"
-    // sitePath: "/sites/ProductManagers"
     const siteUrl = `/sites/${hostname}:${sitePath}`;
     try {
       const site = await this.client.api(siteUrl).get();
@@ -49,6 +31,32 @@ export default class OneDriveService {
         message: e?.message,
       });
       throw e;
+    }
+  }
+
+  // Ensure folder chain exists under the site's default Documents drive
+  async ensureFolderPath({ hostname, sitePath, folderRelativePath }) {
+    const { site, drive } = await this._getSiteAndDefaultDrive(hostname, sitePath);
+    const segments = (folderRelativePath || "").split("/").filter(Boolean);
+    let currentPath = "";
+    for (const seg of segments) {
+      currentPath = currentPath ? `${currentPath}/${seg}` : seg;
+      const encoded = currentPath.split("/").map(encodeURIComponent).join("/");
+      const metaUrl = `/sites/${site.id}/drives/${drive.id}/root:/${encoded}`;
+      try {
+        await this.client.api(metaUrl).get(); // exists
+      } catch {
+        // Create this level (POST to parent children)
+        const parentPath = currentPath.includes("/") ? currentPath.split("/").slice(0, -1).join("/") : "";
+        const parentEncoded = parentPath ? parentPath.split("/").map(encodeURIComponent).join("/") : "";
+        await this.client
+          .api(`/sites/${site.id}/drives/${drive.id}/root:/${parentEncoded}:/children`)
+          .post({
+            name: seg,
+            folder: {},
+            "@microsoft.graph.conflictBehavior": "replace",
+          });
+      }
     }
   }
 
@@ -96,7 +104,18 @@ export default class OneDriveService {
     const encoded = fileRelativePath.split("/").map(encodeURIComponent).join("/");
     const url = `/sites/${site.id}/drives/${drive.id}/root:/${encoded}:/content`;
     try {
-      return await this.client.api(url).put(fileContent);
+      // In browsers, upload as Blob (avoid Node Buffer)
+      let body = fileContent;
+      const isBrowser = typeof window !== "undefined" && typeof window.Blob !== "undefined";
+      const mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+      if (isBrowser) {
+        if (fileContent instanceof ArrayBuffer) {
+          body = new Blob([fileContent], { type: mime });
+        } else if (ArrayBuffer.isView(fileContent)) {
+          body = new Blob([fileContent.buffer], { type: mime });
+        }
+      }
+      return await this.client.api(url).put(body);
     } catch (e) {
       console.error("Graph _putSpBinary error", {
         url,
@@ -111,9 +130,15 @@ export default class OneDriveService {
 
   /* ------------------------------ Public API -------------------------------- */
 
-  async readExcelFromSharePoint({ hostname, sitePath, fileRelativePath }) {
+  async readExcelFromSharePoint({
+    hostname,
+    sitePath,
+    fileRelativePath,
+    sheetName,       // optional: preferred sheet to read
+    expectedHeaders, // optional: headers to match
+  }) {
     const content = await this._getSpBinary({ hostname, sitePath, fileRelativePath });
-    return this._xlsxToRows(content); // content is ArrayBuffer
+    return this._xlsxToRows(content, { sheetName, expectedHeaders }); // ArrayBuffer -> rows
   }
 
   async readJsonFromSharePoint({ hostname, sitePath, fileRelativePath }) {
@@ -121,14 +146,6 @@ export default class OneDriveService {
     return JSON.parse(text);
   }
 
-  /**
-   * Upload (create or replace) an Excel file at the given SharePoint path.
-   * @param {Object} opts
-   * @param {string} opts.hostname
-   * @param {string} opts.sitePath
-   * @param {string} opts.fileRelativePath
-   * @param {ArrayBuffer|Blob|Uint8Array|ReadableStream} opts.fileContent
-   */
   async uploadExcelToSharePoint({ hostname, sitePath, fileRelativePath, fileContent }) {
     try {
       await this._putSpBinary({ hostname, sitePath, fileRelativePath, fileContent });
@@ -149,35 +166,50 @@ export default class OneDriveService {
   /* ------------------------------ Local helpers ----------------------------- */
 
   /**
-   * Convert an XLSX ArrayBuffer into an array of row objects.
-   * Tries row 2 as headers (your original layout), falls back to row 1 if needed.
+   * Convert an XLSX ArrayBuffer into array of row objects.
+   * - Auto-detects header row within the first 5 rows.
+   * - Optionally targets a specific sheet and set of expected headers.
    */
-  _xlsxToRows(arrayBuffer) {
+  _xlsxToRows(arrayBuffer, opts = {}) {
+    const expected = (opts.expectedHeaders && opts.expectedHeaders.length)
+      ? opts.expectedHeaders
+      : ["Barcode#", "Meeting Note", "Requires Follow Up", "Last Updated"];
+
     const wb = XLSX.read(arrayBuffer, { type: "array", cellDates: true });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
 
-    if (!raw.length) return [];
+    const scanSheet = (sheet) => {
+      const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
+      if (!raw.length) return [];
+      // Look for a header row (first 5 rows) that contains all expected headers (case-insensitive)
+      for (let i = 0; i < Math.min(5, raw.length); i++) {
+        const hdr = (raw[i] || []).map(h => String(h || "").trim());
+        const norm = hdr.map(h => h.toLowerCase());
+        const ok = expected.every(e => norm.includes(String(e).toLowerCase()));
+        if (ok) {
+          const start = i + 1;
+          return raw
+            .slice(start)
+            .filter(r => r && r.some(c => c !== "" && c != null))
+            .map(r => Object.fromEntries(hdr.map((h, idx) => [h, r[idx] ?? ""])));
+        }
+      }
+      return [];
+    };
 
-    // Prefer row 2 as headers; if empty, use row 1
-    const headerRow = (raw[1] && raw[1].some(v => v !== "")) ? raw[1] : raw[0];
-    const startIdx = headerRow === raw[1] ? 2 : 1;
-
-    const headers = (headerRow || [])
-      .map(h => String(h || "").trim())
-      .filter(Boolean);
-
-    if (!headers.length) return [];
-
-    return raw
-      .slice(startIdx)
-      .filter(row => row && row.some(c => c !== "" && c != null))
-      .map(row => Object.fromEntries(headers.map((h, i) => [h, row[i] ?? ""])));
+    // Try preferred sheet first (if provided), then any sheet that matches.
+    if (opts.sheetName && wb.Sheets[opts.sheetName]) {
+      const rows = scanSheet(wb.Sheets[opts.sheetName]);
+      if (rows.length) return rows;
+    }
+    for (const name of wb.SheetNames) {
+      const rows = scanSheet(wb.Sheets[name]);
+      if (rows.length) return rows;
+    }
+    return [];
   }
 
   /**
-   * Build an Excel workbook (ArrayBuffer) from either a 2D array (AOA)
-   * or an array of objects (rows). Returns an ArrayBuffer ready for upload.
+   * Build an Excel workbook as ArrayBuffer (good for Node or to wrap in a Blob).
    */
   buildExcelArrayBuffer({ aoa, rows, sheetName = "Sheet1" } = {}) {
     const wb = XLSX.utils.book_new();
@@ -195,15 +227,25 @@ export default class OneDriveService {
     return XLSX.write(wb, { bookType: "xlsx", type: "array" }); // ArrayBuffer
   }
 
+  /**
+   * Build an Excel workbook as a Blob (best for browser uploads).
+   */
+  buildExcelBlob({ aoa, rows, sheetName = "Sheet1" } = {}) {
+    const arrayBuf = this.buildExcelArrayBuffer({ aoa, rows, sheetName });
+    return new Blob([arrayBuf], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+  }
+
   /* ---------------------- Large file uploads (optional) --------------------- */
   /**
    * For files >4MB, use an upload session:
    *
-   *   const { site, drive } = await this._getSiteAndDefaultDrive(hostname, sitePath);
-   *   const encoded = fileRelativePath.split("/").map(encodeURIComponent).join("/");
-   *   const session = await this.client
-   *     .api(`/sites/${site.id}/drives/${drive.id}/root:/${encoded}:/createUploadSession`)
-   *     .post({ item: { "@microsoft.graph.conflictBehavior": "replace" }});
-   *   // then PUT chunks to session.uploadUrl
+   * const { site, drive } = await this._getSiteAndDefaultDrive(hostname, sitePath);
+   * const encoded = fileRelativePath.split("/").map(encodeURIComponent).join("/");
+   * const session = await this.client
+   *   .api(`/sites/${site.id}/drives/${drive.id}/root:/${encoded}:/createUploadSession`)
+   *   .post({ item: { "@microsoft.graph.conflictBehavior": "replace" }});
+   * // then PUT chunks to session.uploadUrl
    */
 }
