@@ -142,34 +142,25 @@ export default class OneDriveService {
 
   /**
    * Convert an XLSX ArrayBuffer into an array of row objects.
-   * Dynamically detects the header row as the **first non-empty row**,
-   * so it works whether row 1 is blank or not.
+   * STRICT parsing used by tickets & reports:
+   *   - Row 2 (index 1) is headers
+   *   - Data starts at row 3
    */
   _xlsxToRows(arrayBuffer) {
     const wb = XLSX.read(arrayBuffer, { type: "array", cellDates: true });
     const sheet = wb.Sheets[wb.SheetNames[0]];
     const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
 
-    if (!raw.length) return [];
+    if (raw.length < 2) return [];
 
-    // Find first non-empty row to treat as headers
-    const headerIdx = raw.findIndex(
-      (r) => Array.isArray(r) && r.some((c) => c != null && String(c).trim() !== "")
-    );
-    if (headerIdx === -1) return [];
-
-    const headers = (raw[headerIdx] || [])
-      .map((h) => String(h || "").trim())
+    const headers = (raw[1] || [])
+      .map(h => String(h || "").trim())
       .filter(Boolean);
 
-    if (!headers.length) return [];
-
-    const startIdx = headerIdx + 1;
-
     return raw
-      .slice(startIdx)
-      .filter((row) => row && row.some((c) => c != null && String(c).trim() !== ""))
-      .map((row) => Object.fromEntries(headers.map((h, i) => [h, row[i] ?? ""])));
+      .slice(2)
+      .filter(row => row && row.some(c => c !== "" && c != null))
+      .map(row => Object.fromEntries(headers.map((h, i) => [h, row[i] ?? ""])));
   }
 
   /**
@@ -207,7 +198,7 @@ export default class OneDriveService {
   /**
    * For files >4MB, you can use an upload session:
    *   const { site, drive } = await this._getSiteAndDefaultDrive(hostname, sitePath);
-   *   const encoded = fileRelativePath.split("/").map(encodeURIComponent).join("/");
+   *   const encoded = fileRelativePath split("/").map(encodeURIComponent).join("/");
    *   const session = await this.client
    *     .api(`/sites/${site.id}/drives/${drive.id}/root:/${encoded}:/createUploadSession`)
    *     .post({ item: { "@microsoft.graph.conflictBehavior": "replace" }});
