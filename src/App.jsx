@@ -1,4 +1,4 @@
-// src/App.jsx - SHAREPOINT VERSION (No Firebase342)
+// src/App.jsx - SHAREPOINT VERSION (No Firebase3426)
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { Client } from "@microsoft/microsoft-graph-client";
 import { PublicClientApplication } from "@azure/msal-browser";
