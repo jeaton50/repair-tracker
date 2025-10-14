@@ -6,10 +6,11 @@ import * as XLSX from "xlsx";
  * Expected columns:
  *   "Barcode#", "Meeting Note", "Requires Follow Up", "Last Updated"
  *
- * NOTE: OneDriveService._xlsxToRows() assumes:
- *   - headers on row 2
- *   - data starts row 3
- * This writer preserves that by inserting a blank first row.
+ * Writer keeps:
+ *   - Row 1 blank
+ *   - Row 2 headers
+ *   - Row 3+ data
+ * to match your strict ticket/report parser.
  */
 export default class SharePointNotesService {
   /**
@@ -18,7 +19,8 @@ export default class SharePointNotesService {
    *   spHostname: string,
    *   spSitePath: string,
    *   spBasePath: string,       // e.g. "General/Repairs/RepairTracker"
-   *   notesFile?: string        // default "repair_notes.xlsx"
+   *   notesFile?: string,       // default "repair_notes.xlsx"
+   *   notesSheetName?: string   // default "Repair Notes" (used when reading)
    * }} config
    */
   constructor(oneDriveService, config) {
@@ -26,6 +28,7 @@ export default class SharePointNotesService {
     this.config = {
       ...config,
       notesFile: config?.notesFile || "repair_notes.xlsx",
+      notesSheetName: config?.notesSheetName || "Repair Notes",
     };
 
     this.notesCache = new Map(); // { BARCODE -> {barcode, meetingNote, requiresFollowUp, lastUpdated} }
@@ -44,13 +47,15 @@ export default class SharePointNotesService {
     return bc ? String(bc).trim().toUpperCase() : "";
   }
 
+  // Looser mapping: accept small header variants just in case
   _shapeFromRow(row) {
-    // Accept either "Barcode#" or "Barcode" just in case
-    const bc = row["Barcode#"] ?? row["Barcode"];
+    const bc = row["Barcode#"] ?? row["Barcode"] ?? row["BARCODE"] ?? row["barcode"];
     return {
       barcode: this._normBarcode(bc),
-      meetingNote: String(row["Meeting Note"] ?? "").trim(),
-      requiresFollowUp: String(row["Requires Follow Up"] ?? "").trim(),
+      meetingNote: String(row["Meeting Note"] ?? row["Notes"] ?? "").trim(),
+      requiresFollowUp: String(
+        row["Requires Follow Up"] ?? row["Requires Follow up"] ?? row["Follow Up"] ?? ""
+      ).trim(),
       lastUpdated: row["Last Updated"] || new Date().toISOString(),
     };
   }
@@ -68,16 +73,33 @@ export default class SharePointNotesService {
 
   /**
    * Load all notes from SharePoint Excel into memory.
-   * Uses OneDriveService.readExcelFromSharePoint (headers row 2, data row 3).
+   * Uses OneDriveService's **flexible** reader that:
+   *  - can scan all sheets
+   *  - auto-detects header row
+   *  - prefers a sheet containing Barcode headers
+   * Falls back to strict reader if flexible is unavailable.
    */
   async loadAllNotes() {
     try {
       console.log("📥 Loading notes from SharePoint...");
-      const rows = await this.ods.readExcelFromSharePoint({
+
+      let rows = [];
+      const args = {
         hostname: this.config.spHostname,
         sitePath: this.config.spSitePath,
         fileRelativePath: this._filePath(),
-      });
+        preferredSheetName: this.config.notesSheetName,
+      };
+
+      if (typeof this.ods.readExcelForNotes === "function") {
+        // Best path: flexible reader that scans all sheets
+        rows = await this.ods.readExcelForNotes(args);
+      } else if (typeof this.ods.readExcelFromSharePointFlexible === "function") {
+        rows = await this.ods.readExcelFromSharePointFlexible(args);
+      } else {
+        // Last resort: strict reader (first sheet, headers row2)
+        rows = await this.ods.readExcelFromSharePoint(args);
+      }
 
       const map = new Map();
       (rows || []).forEach(r => {
@@ -166,7 +188,7 @@ export default class SharePointNotesService {
         "Last Updated": n.lastUpdated,
       }));
 
-      // ---- Build workbook with blank row1 + headers row2 (for your reader) ----
+      // ---- Build workbook with blank row1 + headers row2 (for strict reader) ----
       const headers = ["Barcode#", "Meeting Note", "Requires Follow Up", "Last Updated"];
       const dataRows = rows.map(r => [
         r["Barcode#"], r["Meeting Note"], r["Requires Follow Up"], r["Last Updated"]
@@ -185,7 +207,7 @@ export default class SharePointNotesService {
         { wch: 24 }, // Last Updated
       ];
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Repair Notes");
+      XLSX.utils.book_append_sheet(wb, ws, this.config.notesSheetName || "Repair Notes");
 
       // ArrayBuffer -> Blob (browser-safe; avoids Node Buffer)
       const excelArrayBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
@@ -235,7 +257,7 @@ export default class SharePointNotesService {
     await this.saveToSharePoint();
   }
 
-  /** Get all notes as a plain array.. */
+  /** Get all notes as a plain array. */
   getAllNotes() {
     return Array.from(this.notesCache.values());
   }
