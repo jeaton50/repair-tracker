@@ -4,28 +4,9 @@ import { ResponseType } from "@microsoft/microsoft-graph-client";
 
 /**
  * OneDrive/SharePoint file reader & writer focused on SharePoint site libraries.
- * Requires delegated Microsoft Graph scopes. Minimum:
+ * Scopes needed:
  *  - Files.Read.All (read)
  *  - Files.ReadWrite.All (upload/replace)
- *
- * Example (read Excel - strict):
- *   const ods = new OneDriveService(graphClient);
- *   const rows = await ods.readExcelFromSharePoint({
- *     hostname: "rentexinc.sharepoint.com",
- *     sitePath: "/sites/ProductManagers",
- *     fileRelativePath: "General/Repairs/RepairTracker/ticket_list.xlsx"
- *   });
- *
- * Example (read Excel - flexible):
- *   const rows = await ods.readExcelFromSharePointFlexible({ ... });
- *
- * Example (upload Excel from ArrayBuffer/Blob):
- *   await ods.uploadExcelToSharePoint({
- *     hostname: "rentexinc.sharepoint.com",
- *     sitePath: "/sites/ProductManagers",
- *     fileRelativePath: "General/Repairs/RepairTracker/repair_notes.xlsx",
- *     fileContent: arrayBufferOrBlob
- *   });
  */
 export default class OneDriveService {
   constructor(client) {
@@ -37,7 +18,7 @@ export default class OneDriveService {
   // Resolve site + default "Documents" drive
   async _getSiteAndDefaultDrive(hostname, sitePath) {
     const site = await this.client.api(`/sites/${hostname}:${sitePath}`).get();
-    const drive = await this.client.api(`/sites/${site.id}/drive`).get(); // default document library
+    const drive = await this.client.api(`/sites/${site.id}/drive`).get(); // default doc lib
     return { site, drive };
   }
 
@@ -50,10 +31,8 @@ export default class OneDriveService {
       currentPath = currentPath ? `${currentPath}/${seg}` : seg;
       const encoded = currentPath.split("/").map(encodeURIComponent).join("/");
       try {
-        // If the folder exists this will succeed
-        await this.client.api(`/sites/${site.id}/drives/${drive.id}/root:/${encoded}`).get();
+        await this.client.api(`/sites/${site.id}/drives/${drive.id}/root:/${encoded}`).get(); // exists
       } catch {
-        // Create folder under its parent
         const parent = currentPath.includes("/") ? currentPath.split("/").slice(0, -1).join("/") : "";
         const parentEncoded = parent ? parent.split("/").map(encodeURIComponent).join("/") : "";
         await this.client
@@ -109,13 +88,23 @@ export default class OneDriveService {
   // STRICT reader (headers on row 2, data from row 3) — use for tickets/reports
   async readExcelFromSharePoint({ hostname, sitePath, fileRelativePath }) {
     const content = await this._getSpBinary({ hostname, sitePath, fileRelativePath });
-    return this._xlsxToRows(content);
+    return this._xlsxToRows_STRICT(content);
   }
 
-  // FLEXIBLE reader (first non-empty row is headers) — use for notes
-  async readExcelFromSharePointFlexible({ hostname, sitePath, fileRelativePath }) {
+  // FLEXIBLE reader scanning ALL SHEETS — recommended for notes
+  async readExcelFromSharePointFlexible({ hostname, sitePath, fileRelativePath, preferredSheetName }) {
     const content = await this._getSpBinary({ hostname, sitePath, fileRelativePath });
-    return this._xlsxToRowsFlexible(content);
+    return this._xlsxToRows_FLEX(content, preferredSheetName);
+  }
+
+  // Convenience wrapper specifically for notes (with smart defaults)
+  async readExcelForNotes({ hostname, sitePath, fileRelativePath, preferredSheetName = "Repair Notes" }) {
+    return this.readExcelFromSharePointFlexible({
+      hostname,
+      sitePath,
+      fileRelativePath,
+      preferredSheetName,
+    });
   }
 
   async readJsonFromSharePoint({ hostname, sitePath, fileRelativePath }) {
@@ -123,9 +112,6 @@ export default class OneDriveService {
     return JSON.parse(text);
   }
 
-  /**
-   * Upload (create or replace) an Excel file at the given SharePoint path.
-   */
   async uploadExcelToSharePoint({ hostname, sitePath, fileRelativePath, fileContent }) {
     try {
       await this._putSpBinary({ hostname, sitePath, fileRelativePath, fileContent });
@@ -144,16 +130,15 @@ export default class OneDriveService {
   }
 
   /* ------------------------------ Local helpers ----------------------------- */
-
   /**
-   * STRICT parse:
+   * STRICT parse used by tickets/reports:
    *   - Row 2 (index 1) is headers
    *   - Data starts at row 3
-   * Used by tickets/reports — DO NOT CHANGE to avoid regressions.
    */
-  _xlsxToRows(arrayBuffer) {
+  _xlsxToRows_STRICT(arrayBuffer) {
     const wb = XLSX.read(arrayBuffer, { type: "array", cellDates: true });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const firstSheet = wb.SheetNames[0];
+    const sheet = wb.Sheets[firstSheet];
     const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
 
     if (raw.length < 2) return [];
@@ -166,40 +151,68 @@ export default class OneDriveService {
 
     return raw
       .slice(2)
-      .filter(row => row && row.some(c => c !== "" && c != null && String(c).trim() !== ""))
+      .filter(row => row && row.some(c => c != null && String(c).trim() !== ""))
       .map(row => Object.fromEntries(headers.map((h, i) => [h, row[i] ?? ""])));
   }
 
   /**
    * FLEXIBLE parse:
-   *   - First non-empty row is treated as headers
-   *   - Works if row 1 is blank or not
-   * Recommended for ad-hoc/notes sheets that may not follow the strict layout.
+   * - Searches a preferred sheet first (if provided), then all sheets.
+   * - For each sheet, finds the first non-empty row as headers.
+   * - Picks the sheet whose headers include "Barcode#" or "Barcode" if possible.
+   * - Falls back to the first parsable sheet if nothing matches the heuristic.
    */
-  _xlsxToRowsFlexible(arrayBuffer) {
+  _xlsxToRows_FLEX(arrayBuffer, preferredSheetName) {
     const wb = XLSX.read(arrayBuffer, { type: "array", cellDates: true });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
 
-    if (!raw.length) return [];
+    const tryParseSheet = (sheetName) => {
+      const sheet = wb.Sheets[sheetName];
+      if (!sheet) return null;
+      const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
+      if (!raw.length) return null;
 
-    const headerIdx = raw.findIndex(
-      r => Array.isArray(r) && r.some(c => c != null && String(c).trim() !== "")
-    );
-    if (headerIdx === -1) return [];
+      const headerIdx = raw.findIndex(r =>
+        Array.isArray(r) && r.some(c => c != null && String(c).trim() !== "")
+      );
+      if (headerIdx === -1) return null;
 
-    const headers = (raw[headerIdx] || [])
-      .map(h => String(h || "").trim())
-      .filter(Boolean);
+      const headers = (raw[headerIdx] || [])
+        .map(h => String(h || "").trim())
+        .filter(Boolean);
+      if (!headers.length) return null;
 
-    if (!headers.length) return [];
+      const startIdx = headerIdx + 1;
+      const rows = raw
+        .slice(startIdx)
+        .filter(row => row && row.some(c => c != null && String(c).trim() !== ""))
+        .map(row => Object.fromEntries(headers.map((h, i) => [h, row[i] ?? ""])));
 
-    const startIdx = headerIdx + 1;
+      return { sheetName, headers, rows };
+    };
 
-    return raw
-      .slice(startIdx)
-      .filter(row => row && row.some(c => c != null && String(c).trim() !== ""))
-      .map(row => Object.fromEntries(headers.map((h, i) => [h, row[i] ?? ""])));
+    // 1) Try the preferred sheet first (if any)
+    if (preferredSheetName && wb.SheetNames.includes(preferredSheetName)) {
+      const r = tryParseSheet(preferredSheetName);
+      if (r && r.rows.length >= 0) return r.rows; // even empty is a valid parse
+    }
+
+    // 2) Try all sheets and rank by header match quality
+    const candidates = [];
+    for (const s of wb.SheetNames) {
+      const r = tryParseSheet(s);
+      if (r) {
+        const headersUpper = r.headers.map(h => h.toUpperCase());
+        const hasBarcode = headersUpper.includes("BARCODE#") || headersUpper.includes("BARCODE");
+        const score = (hasBarcode ? 1000 : 0) + r.headers.length; // simple heuristic
+        candidates.push({ score, ...r });
+      }
+    }
+
+    if (!candidates.length) return [];
+
+    // Prefer sheets with barcode-like headers; otherwise the widest header set
+    candidates.sort((a, b) => b.score - a.score);
+    return candidates[0].rows;
   }
 
   /**

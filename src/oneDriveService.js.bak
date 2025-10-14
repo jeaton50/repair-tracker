@@ -8,7 +8,7 @@ import { ResponseType } from "@microsoft/microsoft-graph-client";
  *  - Files.Read.All (read)
  *  - Files.ReadWrite.All (upload/replace)
  *
- * Usage (read Excel):
+ * Example (read Excel - strict):
  *   const ods = new OneDriveService(graphClient);
  *   const rows = await ods.readExcelFromSharePoint({
  *     hostname: "rentexinc.sharepoint.com",
@@ -16,11 +16,14 @@ import { ResponseType } from "@microsoft/microsoft-graph-client";
  *     fileRelativePath: "General/Repairs/RepairTracker/ticket_list.xlsx"
  *   });
  *
- * Usage (upload/replace Excel from an ArrayBuffer/Blob):
+ * Example (read Excel - flexible):
+ *   const rows = await ods.readExcelFromSharePointFlexible({ ... });
+ *
+ * Example (upload Excel from ArrayBuffer/Blob):
  *   await ods.uploadExcelToSharePoint({
  *     hostname: "rentexinc.sharepoint.com",
  *     sitePath: "/sites/ProductManagers",
- *     fileRelativePath: "General/Repairs/RepairTracker/ticket_list.xlsx",
+ *     fileRelativePath: "General/Repairs/RepairTracker/repair_notes.xlsx",
  *     fileContent: arrayBufferOrBlob
  *   });
  */
@@ -33,8 +36,6 @@ export default class OneDriveService {
 
   // Resolve site + default "Documents" drive
   async _getSiteAndDefaultDrive(hostname, sitePath) {
-    // hostname: "rentexinc.sharepoint.com"
-    // sitePath: "/sites/ProductManagers"
     const site = await this.client.api(`/sites/${hostname}:${sitePath}`).get();
     const drive = await this.client.api(`/sites/${site.id}/drive`).get(); // default document library
     return { site, drive };
@@ -49,8 +50,10 @@ export default class OneDriveService {
       currentPath = currentPath ? `${currentPath}/${seg}` : seg;
       const encoded = currentPath.split("/").map(encodeURIComponent).join("/");
       try {
-        await this.client.api(`/sites/${site.id}/drives/${drive.id}/root:/${encoded}`).get(); // exists
+        // If the folder exists this will succeed
+        await this.client.api(`/sites/${site.id}/drives/${drive.id}/root:/${encoded}`).get();
       } catch {
+        // Create folder under its parent
         const parent = currentPath.includes("/") ? currentPath.split("/").slice(0, -1).join("/") : "";
         const parentEncoded = parent ? parent.split("/").map(encodeURIComponent).join("/") : "";
         await this.client
@@ -103,9 +106,16 @@ export default class OneDriveService {
 
   /* ------------------------------ Public API -------------------------------- */
 
+  // STRICT reader (headers on row 2, data from row 3) — use for tickets/reports
   async readExcelFromSharePoint({ hostname, sitePath, fileRelativePath }) {
     const content = await this._getSpBinary({ hostname, sitePath, fileRelativePath });
-    return this._xlsxToRows(content); // content is ArrayBuffer
+    return this._xlsxToRows(content);
+  }
+
+  // FLEXIBLE reader (first non-empty row is headers) — use for notes
+  async readExcelFromSharePointFlexible({ hostname, sitePath, fileRelativePath }) {
+    const content = await this._getSpBinary({ hostname, sitePath, fileRelativePath });
+    return this._xlsxToRowsFlexible(content);
   }
 
   async readJsonFromSharePoint({ hostname, sitePath, fileRelativePath }) {
@@ -115,11 +125,6 @@ export default class OneDriveService {
 
   /**
    * Upload (create or replace) an Excel file at the given SharePoint path.
-   * @param {Object} opts
-   * @param {string} opts.hostname - e.g., "rentexinc.sharepoint.com"
-   * @param {string} opts.sitePath - e.g., "/sites/ProductManagers"
-   * @param {string} opts.fileRelativePath - e.g., "General/Repairs/RepairTracker/ticket_list.xlsx"
-   * @param {ArrayBuffer|Blob|Uint8Array|ReadableStream} opts.fileContent - Excel binary to upload
    */
   async uploadExcelToSharePoint({ hostname, sitePath, fileRelativePath, fileContent }) {
     try {
@@ -141,10 +146,10 @@ export default class OneDriveService {
   /* ------------------------------ Local helpers ----------------------------- */
 
   /**
-   * Convert an XLSX ArrayBuffer into an array of row objects.
-   * STRICT parsing used by tickets & reports:
+   * STRICT parse:
    *   - Row 2 (index 1) is headers
    *   - Data starts at row 3
+   * Used by tickets/reports — DO NOT CHANGE to avoid regressions.
    */
   _xlsxToRows(arrayBuffer) {
     const wb = XLSX.read(arrayBuffer, { type: "array", cellDates: true });
@@ -157,9 +162,43 @@ export default class OneDriveService {
       .map(h => String(h || "").trim())
       .filter(Boolean);
 
+    if (!headers.length) return [];
+
     return raw
       .slice(2)
-      .filter(row => row && row.some(c => c !== "" && c != null))
+      .filter(row => row && row.some(c => c !== "" && c != null && String(c).trim() !== ""))
+      .map(row => Object.fromEntries(headers.map((h, i) => [h, row[i] ?? ""])));
+  }
+
+  /**
+   * FLEXIBLE parse:
+   *   - First non-empty row is treated as headers
+   *   - Works if row 1 is blank or not
+   * Recommended for ad-hoc/notes sheets that may not follow the strict layout.
+   */
+  _xlsxToRowsFlexible(arrayBuffer) {
+    const wb = XLSX.read(arrayBuffer, { type: "array", cellDates: true });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
+
+    if (!raw.length) return [];
+
+    const headerIdx = raw.findIndex(
+      r => Array.isArray(r) && r.some(c => c != null && String(c).trim() !== "")
+    );
+    if (headerIdx === -1) return [];
+
+    const headers = (raw[headerIdx] || [])
+      .map(h => String(h || "").trim())
+      .filter(Boolean);
+
+    if (!headers.length) return [];
+
+    const startIdx = headerIdx + 1;
+
+    return raw
+      .slice(startIdx)
+      .filter(row => row && row.some(c => c != null && String(c).trim() !== ""))
       .map(row => Object.fromEntries(headers.map((h, i) => [h, row[i] ?? ""])));
   }
 
@@ -180,8 +219,7 @@ export default class OneDriveService {
     }
 
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
-    // Write as ArrayBuffer (type: "array")
-    return XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    return XLSX.write(wb, { bookType: "xlsx", type: "array" }); // ArrayBuffer
   }
 
   /**
@@ -198,7 +236,7 @@ export default class OneDriveService {
   /**
    * For files >4MB, you can use an upload session:
    *   const { site, drive } = await this._getSiteAndDefaultDrive(hostname, sitePath);
-   *   const encoded = fileRelativePath split("/").map(encodeURIComponent).join("/");
+   *   const encoded = fileRelativePath.split("/").map(encodeURIComponent).join("/");
    *   const session = await this.client
    *     .api(`/sites/${site.id}/drives/${drive.id}/root:/${encoded}:/createUploadSession`)
    *     .post({ item: { "@microsoft.graph.conflictBehavior": "replace" }});
