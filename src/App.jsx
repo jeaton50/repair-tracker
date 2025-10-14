@@ -1,13 +1,12 @@
-// src/App.jsx - FIREBASE-OPTIMIZED VERSION
+// src/App.jsx - SHAREPOINT VERSION (No Firebase)
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { Client } from "@microsoft/microsoft-graph-client";
 import { PublicClientApplication } from "@azure/msal-browser";
 import { msalConfig, loginRequest, graphConfig } from "./authConfig";
 import OneDriveService from "./oneDriveService";
-import { db } from "./firebase";
+import SharePointNotesService from "./sharePointNotesService";
 import * as XLSX from "xlsx";
-import { doc, setDoc, onSnapshot, serverTimestamp, deleteDoc, writeBatch, getDoc } from "firebase/firestore";
-import { Search, Download, ChevronDown, ChevronUp, Upload, FileSpreadsheet, RefreshCw, Cloud, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Download, ChevronDown, ChevronUp, Upload, FileSpreadsheet, RefreshCw, Cloud, ChevronLeft, ChevronRight, Save } from "lucide-react";
 
 // ---------- MSAL instance & helpers ----------
 const msalInstance = new PublicClientApplication(msalConfig);
@@ -37,135 +36,95 @@ const useDebounce = (callback, delay) => {
   }, [callback, delay]);
 };
 
-// ---------- Row Editor (OPTIMIZED - 3s auto-save + idle-based sync) ----------
-const RowEditor = ({ row, rowIndex, onClose }) => {
+// ---------- Row Editor (SharePoint Version - Manual Save) ----------
+const RowEditor = ({ row, rowIndex, onClose, notesService, onSave }) => {
   const [meetingNote, setMeetingNote] = useState("");
   const [followUp, setFollowUp] = useState("");
   const [lastSaved, setLastSaved] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const saveTimeoutRef = useRef(null);
-  const idleTimerRef = useRef(null);
+  const [hasChanges, setHasChanges] = useState(false);
   const barcode = row["Barcode#"];
 
-  // Load notes once when editor opens
+  // Load notes when editor opens
   useEffect(() => {
-    if (!barcode) {
+    if (!barcode || !notesService) {
       setIsLoading(false);
       return;
     }
     
-    const loadNotes = async () => {
-      try {
-        const ref = doc(db, "repairNotes", barcode);
-        const snap = await getDoc(ref);
-        
-        if (snap.exists()) {
-          const d = snap.data();
-          setMeetingNote(d.meetingNote || "");
-          setFollowUp(d.requiresFollowUp || "");
-        }
-      } catch (e) {
-        console.error("Failed to load notes:", e);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    const note = notesService.getNote(barcode);
+    setMeetingNote(note.meetingNote || "");
+    setFollowUp(note.requiresFollowUp || "");
+    setIsLoading(false);
+  }, [barcode, notesService]);
 
-    loadNotes();
-  }, [barcode]);
-
-  // 🎯 OPTIMIZATION 1: Auto-save delay increased to 3 seconds (66% fewer writes)
+  // Track changes
   useEffect(() => {
     if (isLoading) return;
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(async () => {
-      if (!barcode) return;
-      setIsSaving(true);
-      try {
-        const ref = doc(db, "repairNotes", barcode);
-        await setDoc(
-          ref,
-          { barcode, meetingNote, requiresFollowUp: followUp, lastUpdated: serverTimestamp() },
-          { merge: true }
-        );
-        setLastSaved(new Date());
-      } catch (e) {
-        console.error("Auto-save error:", e);
-        alert("Failed to save. Check your Firebase connection.");
-      } finally {
-        setIsSaving(false);
-      }
-    }, 3000); // 🔥 Changed from 1000ms to 3000ms
-    return () => saveTimeoutRef.current && clearTimeout(saveTimeoutRef.current);
-  }, [meetingNote, followUp, barcode, isLoading]);
+    const originalNote = notesService?.getNote(barcode);
+    const hasChanged = 
+      meetingNote !== (originalNote?.meetingNote || "") ||
+      followUp !== (originalNote?.requiresFollowUp || "");
+    setHasChanges(hasChanged);
+  }, [meetingNote, followUp, barcode, notesService, isLoading]);
 
-  // 🎯 OPTIMIZATION 2: Replaced real-time listener with idle-based polling (80-90% listener cost reduction)
-  useEffect(() => {
-    if (!barcode || isLoading) return;
-
-    const syncFromFirebase = async () => {
-      try {
-        const ref = doc(db, "repairNotes", barcode);
-        const snap = await getDoc(ref);
-        if (snap.exists()) {
-          const d = snap.data();
-          // Only update if user isn't actively typing in that field
-          if (document.activeElement?.name !== "meetingNote") {
-            setMeetingNote(d.meetingNote || "");
-          }
-          if (document.activeElement?.name !== "followUp") {
-            setFollowUp(d.requiresFollowUp || "");
-          }
-        }
-      } catch (err) {
-        console.error("Sync error:", err);
-      }
-    };
-
-    const handleActivity = () => {
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-      // Sync after 5 seconds of inactivity
-      idleTimerRef.current = setTimeout(syncFromFirebase, 5000);
-    };
-
-    // Initial sync
-    syncFromFirebase();
-
-    // Listen for user activity
-    window.addEventListener('mousemove', handleActivity);
-    window.addEventListener('keypress', handleActivity);
-    window.addEventListener('click', handleActivity);
-
-    // Set initial idle timer
-    handleActivity();
-
-    return () => {
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-      window.removeEventListener('mousemove', handleActivity);
-      window.removeEventListener('keypress', handleActivity);
-      window.removeEventListener('click', handleActivity);
-    };
-  }, [barcode, isLoading]);
+  // Manual save to SharePoint
+  const handleSave = async () => {
+    if (!barcode || !notesService) return;
+    
+    setIsSaving(true);
+    try {
+      notesService.updateNote(barcode, meetingNote, followUp);
+      await notesService.saveToSharePoint();
+      setLastSaved(new Date());
+      setHasChanges(false);
+      if (onSave) onSave();
+      alert("✅ Saved to SharePoint successfully!");
+    } catch (e) {
+      console.error("Save error:", e);
+      alert("❌ Failed to save. Check your connection and try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleClearAll = () => {
     if (window.confirm("Clear all notes for this item?")) {
       setMeetingNote("");
       setFollowUp("");
+      setHasChanges(true);
     }
   };
 
-  const handleDeleteFromDatabase = async () => {
-    if (!window.confirm("Permanently delete all notes for this item from the database?")) return;
+  const handleDeleteFromSharePoint = async () => {
+    if (!window.confirm("Permanently delete all notes for this item from SharePoint?")) return;
+    
+    setIsSaving(true);
     try {
-      await deleteDoc(doc(db, "repairNotes", barcode));
+      notesService.deleteNote(barcode);
+      await notesService.saveToSharePoint();
       setMeetingNote("");
       setFollowUp("");
-      alert("Notes deleted from database");
+      setHasChanges(false);
+      if (onSave) onSave();
+      alert("🗑️ Notes deleted from SharePoint");
     } catch (e) {
       console.error("Delete error:", e);
       alert("Failed to delete. Please try again.");
+    } finally {
+      setIsSaving(false);
     }
+  };
+
+  // Warn before closing with unsaved changes
+  const handleClose = () => {
+    if (hasChanges) {
+      if (!window.confirm("You have unsaved changes. Close anyway?")) {
+        return;
+      }
+    }
+    onClose();
   };
 
   return (
@@ -178,12 +137,13 @@ const RowEditor = ({ row, rowIndex, onClose }) => {
               {row["Barcode#"]} - {row["Equipment"]}
             </p>
             {isLoading && <p className="text-xs text-blue-600 mt-1">⟳ Loading...</p>}
-            {isSaving && !isLoading && <p className="text-xs text-blue-600 mt-1">⟳ Saving...</p>}
-            {lastSaved && !isSaving && !isLoading && (
+            {isSaving && <p className="text-xs text-blue-600 mt-1">⟳ Saving to SharePoint...</p>}
+            {hasChanges && !isSaving && <p className="text-xs text-orange-600 mt-1">⚠️ Unsaved changes</p>}
+            {lastSaved && !isSaving && !hasChanges && (
               <p className="text-xs text-green-600 mt-1">✓ Saved at {lastSaved.toLocaleTimeString()}</p>
             )}
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">
+          <button onClick={handleClose} className="text-gray-500 hover:text-gray-700 text-2xl">
             ×
           </button>
         </div>
@@ -204,9 +164,9 @@ const RowEditor = ({ row, rowIndex, onClose }) => {
               name="meetingNote"
               value={meetingNote}
               onChange={(e) => setMeetingNote(e.target.value)}
-              placeholder="Add meeting notes here... (auto-saves every 3 seconds)"
+              placeholder="Add meeting notes here... (click Save button when done)"
               className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-              disabled={isLoading}
+              disabled={isLoading || isSaving}
             />
           </div>
 
@@ -234,9 +194,9 @@ const RowEditor = ({ row, rowIndex, onClose }) => {
               name="followUp"
               value={followUp}
               onChange={(e) => setFollowUp(e.target.value)}
-              placeholder="Add follow-up notes here... (auto-saves every 3 seconds)"
+              placeholder="Add follow-up notes here... (click Save button when done)"
               className="w-full h-24 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-              disabled={isLoading}
+              disabled={isLoading || isSaving}
             />
           </div>
 
@@ -253,26 +213,41 @@ const RowEditor = ({ row, rowIndex, onClose }) => {
           </div>
         </div>
 
-        <div className="p-6 border-t flex justify-between">
-          <div className="flex gap-2">
-            <button
-              onClick={handleClearAll}
-              className="px-6 py-2 text-orange-600 bg-orange-50 border border-orange-300 rounded-lg hover:bg-orange-100"
-              disabled={isLoading}
-            >
-              Clear All Notes
-            </button>
-            <button
-              onClick={handleDeleteFromDatabase}
-              className="px-6 py-2 text-red-600 bg-red-50 border border-red-300 rounded-lg hover:bg-red-100"
-              disabled={isLoading}
-            >
-              Delete from Database
-            </button>
+        <div className="p-6 border-t">
+          <div className="flex justify-between">
+            <div className="flex gap-2">
+              <button
+                onClick={handleClearAll}
+                className="px-6 py-2 text-orange-600 bg-orange-50 border border-orange-300 rounded-lg hover:bg-orange-100"
+                disabled={isLoading || isSaving}
+              >
+                Clear All Notes
+              </button>
+              <button
+                onClick={handleDeleteFromSharePoint}
+                className="px-6 py-2 text-red-600 bg-red-50 border border-red-300 rounded-lg hover:bg-red-100"
+                disabled={isLoading || isSaving}
+              >
+                Delete from SharePoint
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleSave}
+                disabled={!hasChanges || isSaving || isLoading}
+                className="flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Save size={18} />
+                {isSaving ? "Saving..." : "Save to SharePoint"}
+              </button>
+              <button 
+                onClick={handleClose} 
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Close
+              </button>
+            </div>
           </div>
-          <button onClick={onClose} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            Close
-          </button>
         </div>
       </div>
     </div>
@@ -288,7 +263,6 @@ const PaginatedTable = ({ data, columns, onRowClick, activeTab, currentPage, set
 
   return (
     <div className="h-full flex flex-col bg-white rounded-lg shadow">
-      {/* Table */}
       <div className="flex-1 overflow-auto">
         <table className="w-full border-collapse">
           <thead className="bg-gray-50 border-b sticky top-0 z-10">
@@ -343,7 +317,6 @@ const PaginatedTable = ({ data, columns, onRowClick, activeTab, currentPage, set
         </table>
       </div>
 
-      {/* Pagination Controls */}
       {totalPages > 1 && itemsPerPage < 99999 && (
         <div className="border-t bg-white px-6 py-4">
           <div className="flex items-center justify-between">
@@ -417,17 +390,15 @@ const RepairTrackerSheet = () => {
 
   const [combinedDataWithNotes, setCombinedDataWithNotes] = useState([]);
   const [notesMap, setNotesMap] = useState(new Map());
-  const [notesCache, setNotesCache] = useState(new Map());
 
   const [isImporting, setIsImporting] = useState(false);
-  const isImportingRef = useRef(false);
-  useEffect(() => { isImportingRef.current = isImporting; }, [isImporting]);
-  const notesListenersRef = useRef(new Map());
+  const [notesService, setNotesService] = useState(null);
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [accessToken, setAccessToken] = useState(null);
   const [userName, setUserName] = useState("");
   const [lastSync, setLastSync] = useState(null);
+  const [lastNotesSync, setLastNotesSync] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [msalInitialized, setMsalInitialized] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -435,29 +406,10 @@ const RepairTrackerSheet = () => {
   const [locationFilter, setLocationFilter] = useState("");
   const [pmFilter, setPmFilter] = useState("");
   
-  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(100);
   const ITEMS_PER_PAGE = itemsPerPage;
-  
-  // For tracking visible rows (now based on pagination)
-  const MAX_LISTENERS = 100;
 
-  // 🎯 OPTIMIZATION 3: Debounced state updates for listeners (500ms delay)
-  const debouncedSetNotesMap = useDebounce((bc, noteData) => {
-    setNotesMap(prev => {
-      const n = new Map(prev);
-      n.set(bc, noteData);
-      return n;
-    });
-    setNotesCache(prev => {
-      const n = new Map(prev);
-      n.set(bc, noteData);
-      return n;
-    });
-  }, 500);
-
-  // Debounced search
   const debouncedSetSearch = useDebounce((value) => setSearchTerm(value), 300);
 
   // MSAL init
@@ -484,7 +436,57 @@ const RepairTrackerSheet = () => {
     }
   }, [msalInitialized]);
 
-  // ---------- SharePoint data loader ----------
+  // Initialize SharePoint Notes Service
+  useEffect(() => {
+    if (!isAuthenticated || !accessToken) return;
+
+    const initNotesService = async () => {
+      try {
+        const token = await ensureAccessToken();
+        const graph = Client.init({ authProvider: (done) => done(null, token) });
+        const ods = new OneDriveService(graph);
+
+        const service = new SharePointNotesService(ods, {
+          spHostname: graphConfig.spHostname,
+          spSitePath: graphConfig.spSitePath,
+          spBasePath: graphConfig.spBasePath,
+        });
+
+        setNotesService(service);
+
+        // Load all notes on startup
+        console.log("📥 Loading notes from SharePoint...");
+        const notes = await service.loadAllNotes();
+        setNotesMap(notes);
+        setLastNotesSync(new Date());
+        console.log(`✅ Loaded ${notes.size} notes from SharePoint`);
+      } catch (error) {
+        console.error("Failed to initialize notes service:", error);
+      }
+    };
+
+    initNotesService();
+  }, [isAuthenticated, accessToken]);
+
+  // Periodic refresh of notes (every 30 seconds)
+  useEffect(() => {
+    if (!notesService || !isAuthenticated) return;
+
+    const interval = setInterval(async () => {
+      try {
+        console.log("🔄 Refreshing notes from SharePoint...");
+        const notes = await notesService.loadAllNotes();
+        setNotesMap(notes);
+        setLastNotesSync(new Date());
+      } catch (error) {
+        console.error("Failed to refresh notes:", error);
+      }
+    }, 30000); // Every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [notesService, isAuthenticated]);
+
+  // SharePoint data loader
   const loadFromSharePoint = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
@@ -575,7 +577,7 @@ const RepairTrackerSheet = () => {
     setCategoryMapping([]);
   };
 
-  // ---------- Build combined data ----------
+  // Build combined data
   const baseCombinedData = useMemo(() => {
     if (reportData.length === 0) return [];
 
@@ -657,82 +659,21 @@ const RepairTrackerSheet = () => {
     return out;
   }, [ticketData, reportData, categoryMapping]);
 
-  // 🎯 OPTIMIZATION 4: Reduced buffer window from ±25 to ±10 (20% fewer listeners)
+  // Merge notes with base data
   useEffect(() => {
-    if (baseCombinedData.length === 0) {
-      setCombinedDataWithNotes([]);
-      return;
-    }
-
-    // Only subscribe to notes for current page + smaller buffer
-    const startIdx = Math.max(0, (currentPage - 1) * ITEMS_PER_PAGE - 10); // Changed from 25
-    const endIdx = Math.min(baseCombinedData.length, currentPage * ITEMS_PER_PAGE + 10); // Changed from 25
-    const pageBarcodes = baseCombinedData
-      .slice(startIdx, endIdx)
-      .map(row => row["Barcode#"])
-      .filter(Boolean)
-      .slice(0, MAX_LISTENERS);
-
-    // Cleanup old listeners for barcodes no longer on current page
-    notesListenersRef.current.forEach((unsub, bc) => {
-      if (!pageBarcodes.includes(bc)) {
-        unsub();
-        notesListenersRef.current.delete(bc);
-      }
-    });
-
-    // Subscribe to current page barcodes only
-    pageBarcodes.forEach((bc) => {
-      if (notesListenersRef.current.has(bc)) return;
-
-      const ref = doc(db, "repairNotes", bc);
-      const unsub = onSnapshot(
-        ref,
-        (snap) => {
-          if (isImportingRef.current) return;
-          
-          const noteData = snap.exists() 
-            ? {
-                meetingNote: snap.data().meetingNote || "",
-                requiresFollowUp: snap.data().requiresFollowUp || "",
-              }
-            : { meetingNote: "", requiresFollowUp: "" };
-
-          // Use debounced update
-          debouncedSetNotesMap(bc, noteData);
-        },
-        (err) => console.error(`Error syncing barcode ${bc}:`, err)
-      );
-      notesListenersRef.current.set(bc, unsub);
-    });
-
-    // Merge notes using cache for non-visible rows
     const merged = baseCombinedData.map((row) => {
       const bc = row["Barcode#"];
-      const notes = notesMap.get(bc) || notesCache.get(bc) || { meetingNote: "", requiresFollowUp: "" };
+      const note = notesMap.get(bc) || { meetingNote: "", requiresFollowUp: "" };
       return {
         ...row,
-        "Meeting Note": notes.meetingNote,
-        "Requires Follow Up": notes.requiresFollowUp,
+        "Meeting Note": note.meetingNote,
+        "Requires Follow Up": note.requiresFollowUp,
       };
     });
     setCombinedDataWithNotes(merged);
+  }, [baseCombinedData, notesMap]);
 
-    return () => {
-      notesListenersRef.current.forEach((unsub) => unsub());
-      notesListenersRef.current.clear();
-    };
-  }, [baseCombinedData, notesMap, currentPage, notesCache, debouncedSetNotesMap]);
-
-  // Clean up listeners when switching away from combined tab
-  useEffect(() => {
-    if (activeTab !== "combined") {
-      notesListenersRef.current.forEach(unsub => unsub());
-      notesListenersRef.current.clear();
-    }
-  }, [activeTab]);
-
-  // ---------- Derived UI values ----------
+  // Derived UI values
   const getCurrentData = useCallback(() => {
     switch (activeTab) {
       case "tickets":
@@ -747,9 +688,7 @@ const RepairTrackerSheet = () => {
   }, [activeTab, ticketData, reportData, combinedDataWithNotes]);
 
   const currentData = getCurrentData();
-
-  const columns =
-    currentData.length > 0 ? Object.keys(currentData[0]).filter((c) => !c.startsWith("_")) : [];
+  const columns = currentData.length > 0 ? Object.keys(currentData[0]).filter((c) => !c.startsWith("_")) : [];
 
   const uniqueLocations = useMemo(() => {
     const s = new Set();
@@ -779,7 +718,7 @@ const RepairTrackerSheet = () => {
     return [Array.from(cats).sort(), Array.from(pms).sort()];
   }, [reportData, combinedDataWithNotes]);
 
-  // ---------- Category mapping helpers ----------
+  // Category mapping helpers
   const addCategoryMapping = (category, pm, department = "", categoryText = "") => {
     setCategoryMapping((prev) => {
       const copy = [...prev];
@@ -835,176 +774,40 @@ const RepairTrackerSheet = () => {
     const ws = XLSX.utils.json_to_sheet(templateData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Notes Template");
-
-    ws['!cols'] = [
-      { wch: 15 },
-      { wch: 50 },
-      { wch: 40 }
-    ];
-
+    ws['!cols'] = [{ wch: 15 }, { wch: 50 }, { wch: 40 }];
     XLSX.writeFile(wb, "notes_import_template.xlsx");
   };
 
-  // 🎯 OPTIMIZATION 5: Smart import with skip unchanged records (50-90% import write reduction)
-  const importNotesFromExcel = async (file, options = {}) => {
-    if (!file) return;
-
-    const { skipEmptyNotes = true, sheetName = null } = options;
-
-    const normKey = (k) => String(k || "").toLowerCase().replace(/[^\w]/g, "");
-    const s = (v) => (v == null ? "" : String(v).trim());
-
-    const BARCODE_KEYS = new Set(["barcode", "barcodenumber"]);
-    const MEETING_KEYS = new Set(["meetingnote", "meetingnotes", "meeting_note", "notes"]);
-    const FOLLOWUP_KEYS = new Set(["requiresfollowup", "followup", "followuprequired", "follow_up", "follow-up"].map(normKey));
-
-    const pickField = (row, candidatesSet) => {
-      for (const [k, v] of Object.entries(row)) {
-        if (candidatesSet.has(k)) return s(v);
-      }
-      return "";
-    };
-
+  // Import notes from Excel
+  const importNotesFromExcel = async (file) => {
+    if (!file || !notesService) return;
+    
     setIsImporting(true);
-
-    let totalRows = 0;
-    let skippedNoBarcode = 0;
-    let skippedUnchanged = 0;
-    let skippedEmpty = 0;
-    let written = 0;
-
     try {
       const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, { type: "array", raw: true });
+      const wb = XLSX.read(buf, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws);
 
-      let chosen = wb.SheetNames[0];
-      if (sheetName && wb.SheetNames.includes(sheetName)) {
-        chosen = sheetName;
-      } else {
-        const notesSheet = wb.SheetNames.find((n) => n.toLowerCase().includes("notes"));
-        if (notesSheet) chosen = notesSheet;
-      }
+      const notesArray = rows
+        .map(row => ({
+          barcode: row["Barcode#"] || row["Barcode"],
+          meetingNote: row["Meeting Note"] || "",
+          requiresFollowUp: row["Requires Follow Up"] || "",
+        }))
+        .filter(note => note.barcode);
 
-      const ws = wb.Sheets[chosen];
-      if (!ws) throw new Error("No worksheet found to import.");
+      await notesService.importNotes(notesArray);
 
-      const rawRows = XLSX.utils.sheet_to_json(ws, { defval: "", raw: true });
-      totalRows = rawRows.length;
+      // Refresh display
+      const notes = await notesService.loadAllNotes();
+      setNotesMap(notes);
+      setLastNotesSync(new Date());
 
-      const rows = rawRows.map((r) => {
-        const out = {};
-        for (const [k, v] of Object.entries(r)) out[normKey(k)] = v;
-        return out;
-      });
-
-      const byBarcode = new Map();
-      let emptyRows = 0;
-      let duplicateRows = 0;
-
-      for (const row of rows) {
-        const barcode = pickField(row, BARCODE_KEYS);
-        if (!barcode) {
-          skippedNoBarcode++;
-          continue;
-        }
-
-        const meetingNote = pickField(row, MEETING_KEYS);
-        const requiresFollowUp = pickField(row, FOLLOWUP_KEYS);
-
-        const isEmpty = !meetingNote && !requiresFollowUp;
-        if (isEmpty) emptyRows++;
-
-        if (isEmpty && skipEmptyNotes) continue;
-
-        if (byBarcode.has(barcode)) duplicateRows++;
-
-        const prev = byBarcode.get(barcode) || { barcode, meetingNote: "", requiresFollowUp: "" };
-        byBarcode.set(barcode, {
-          barcode,
-          meetingNote: meetingNote || prev.meetingNote || "",
-          requiresFollowUp: requiresFollowUp || prev.requiresFollowUp || "",
-        });
-      }
-
-      const deduped = Array.from(byBarcode.values());
-
-      // 🔥 CHECK EXISTING DATA BEFORE WRITING
-      const chunkSize = 400;
-      for (let i = 0; i < deduped.length; i += chunkSize) {
-        const slice = deduped.slice(i, i + chunkSize);
-        const batch = writeBatch(db);
-        let batchHasWrites = false;
-
-        for (const { barcode, meetingNote, requiresFollowUp } of slice) {
-          const ref = doc(db, "repairNotes", barcode);
-
-          try {
-            const existingDoc = await getDoc(ref);
-            if (existingDoc.exists()) {
-              const existing = existingDoc.data();
-              if (existing.meetingNote === meetingNote && existing.requiresFollowUp === requiresFollowUp) {
-                skippedUnchanged++;
-                continue;
-              }
-            }
-          } catch (e) {
-            console.warn(`Could not check existing data for ${barcode}:`, e);
-          }
-
-          batch.set(
-            ref,
-            {
-              barcode,
-              meetingNote,
-              requiresFollowUp,
-              lastUpdated: serverTimestamp(),
-            },
-            { merge: true }
-          );
-          written++;
-          batchHasWrites = true;
-        }
-
-        if (batchHasWrites) {
-          await batch.commit();
-        }
-      }
-
-      // Seed local caches
-      setNotesCache((prev) => {
-        const next = new Map(prev);
-        for (const { barcode, meetingNote, requiresFollowUp } of deduped) {
-          next.set(barcode, { meetingNote, requiresFollowUp });
-        }
-        return next;
-      });
-      setNotesMap((prev) => {
-        const next = new Map(prev);
-        for (const { barcode, meetingNote, requiresFollowUp } of deduped) {
-          next.set(barcode, { meetingNote, requiresFollowUp });
-        }
-        return next;
-      });
-
-      const message = `✅ Notes Import Complete (sheet: "${chosen}")\n\n` +
-        `• Total rows: ${totalRows.toLocaleString()}\n` +
-        `• Written: ${written.toLocaleString()} records\n` +
-        `• Skipped (no barcode): ${skippedNoBarcode.toLocaleString()}\n` +
-        `• Skipped (unchanged): ${skippedUnchanged.toLocaleString()}\n` +
-        (skipEmptyNotes ? `• Skipped (empty): ${skippedEmpty.toLocaleString()}\n` : `• Empty notes: ${emptyRows.toLocaleString()} (cleared existing)\n`) +
-        `• Duplicate rows: ${duplicateRows.toLocaleString()} (merged)\n\n` +
-        `💰 Saved ${skippedUnchanged.toLocaleString()} Firebase writes!`;
-
-      alert(message);
-      console.log("Import stats:", { totalRows, written, skippedNoBarcode, skippedUnchanged, skippedEmpty, duplicateRows });
-    } catch (e) {
-      console.error("Notes import failed:", e);
-      alert(
-        `❌ Import Failed\n\n${e.message}\n\n` +
-        `Tips:\n` +
-        `• Put notes on a sheet named "Notes"\n` +
-        `• Required headers: Barcode#, Meeting Note, Requires Follow Up`
-      );
+      alert(`✅ Imported ${notesArray.length} notes to SharePoint`);
+    } catch (error) {
+      console.error("Import failed:", error);
+      alert(`❌ Import failed: ${error.message}`);
     } finally {
       setIsImporting(false);
     }
@@ -1180,7 +983,7 @@ const RepairTrackerSheet = () => {
     );
   };
 
-  // ---------- Filtering, sorting, export ----------
+  // Filtering, sorting, export
   const hasData = ticketData.length > 0 || reportData.length > 0;
 
   useEffect(() => {
@@ -1237,6 +1040,15 @@ const RepairTrackerSheet = () => {
     setEditingRowIndex(null);
   };
 
+  const handleNoteSaved = async () => {
+    // Refresh notes after save
+    if (notesService) {
+      const notes = await notesService.loadAllNotes();
+      setNotesMap(notes);
+      setLastNotesSync(new Date());
+    }
+  };
+
   const exportToCSV = () => {
     if (filteredAndSortedData.length === 0) return;
     const headers = columns.join(",");
@@ -1259,7 +1071,7 @@ const RepairTrackerSheet = () => {
     URL.revokeObjectURL(url);
   };
 
-  // ---------- Render ----------
+  // Render
   return (
     <div className="w-full h-screen flex flex-col bg-gray-50">
       {/* Header */}
@@ -1274,14 +1086,13 @@ const RepairTrackerSheet = () => {
               {isAuthenticated && (
                 <div className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
                   <Cloud size={12} />
-                  OneDrive/SharePoint synced
+                  SharePoint
                 </div>
               )}
-              {lastSync && <span className="text-xs text-gray-500">Last sync: {lastSync.toLocaleTimeString()}</span>}
-              {activeTab === "combined" && (
-                <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                  Active listeners: {notesListenersRef.current.size} / {MAX_LISTENERS}
-                  {itemsPerPage >= 99999 && " (limited for performance)"}
+              {lastSync && <span className="text-xs text-gray-500">Data: {lastSync.toLocaleTimeString()}</span>}
+              {lastNotesSync && (
+                <span className="text-xs text-blue-500">
+                  Notes: {lastNotesSync.toLocaleTimeString()}
                 </span>
               )}
             </div>
@@ -1348,13 +1159,13 @@ const RepairTrackerSheet = () => {
             
             <label className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 cursor-pointer transition-colors text-sm">
               <Upload size={16} />
-              Upload Notes (Excel/CSV)
+              Upload Notes
               <input
                 type="file"
                 accept=".xlsx,.xls,.csv"
                 onChange={(e) => importNotesFromExcel(e.target.files?.[0])}
                 className="hidden"
-                disabled={loading || isImporting}
+                disabled={loading || isImporting || !notesService}
               />
             </label>
             
@@ -1502,27 +1313,6 @@ const RepairTrackerSheet = () => {
 
       {/* Body */}
       <div className="flex-1 overflow-hidden px-6 py-4">
-        {itemsPerPage >= 99999 && filteredAndSortedData.length > 500 && (
-          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div className="flex items-start gap-2">
-              <span className="text-yellow-600 text-sm">⚠️</span>
-              <div className="flex-1">
-                <p className="text-sm text-yellow-800 font-medium">Performance Note</p>
-                <p className="text-xs text-yellow-700 mt-1">
-                  Displaying all {filteredAndSortedData.length} rows at once. This may cause slower scrolling. 
-                  Consider using pagination (100-500 rows) for better performance.
-                </p>
-              </div>
-              <button
-                onClick={() => setItemsPerPage(100)}
-                className="text-xs text-yellow-800 hover:text-yellow-900 underline"
-              >
-                Switch to 100/page
-              </button>
-            </div>
-          </div>
-        )}
-        
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
@@ -1533,7 +1323,7 @@ const RepairTrackerSheet = () => {
         ) : activeTab === "diagnostics" ? (
           <div className="max-w-6xl mx-auto space-y-6 overflow-y-auto h-full pb-8">
             <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Data Matching Diagnostics</h2>
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">System Diagnostics</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div className="p-4 bg-blue-50 rounded-lg">
                   <h3 className="font-semibold text-blue-900 mb-2">Repair Ticket List</h3>
@@ -1546,110 +1336,50 @@ const RepairTrackerSheet = () => {
                   <p className="text-sm text-green-700">records</p>
                 </div>
                 <div className="p-4 bg-purple-50 rounded-lg">
-                  <h3 className="font-semibold text-purple-900 mb-2">Category Mappings</h3>
-                  <p className="text-2xl font-bold text-purple-800">{categoryMapping.length}</p>
-                  <p className="text-sm text-purple-700">categories mapped</p>
+                  <h3 className="font-semibold text-purple-900 mb-2">Notes (SharePoint)</h3>
+                  <p className="text-2xl font-bold text-purple-800">{notesMap.size}</p>
+                  <p className="text-sm text-purple-700">notes stored</p>
                 </div>
-              </div>
-              
-              {/* 🎯 OPTIMIZATION 6: Enhanced diagnostics */}
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                <h3 className="font-semibold text-blue-900 mb-2">Memory Optimization Status</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Active Firestore Listeners:</span>
-                    <span className="font-mono font-bold">{notesListenersRef.current.size} / {MAX_LISTENERS}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Cached Notes:</span>
-                    <span className="font-mono font-bold">{notesCache.size}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Total Rows:</span>
-                    <span className="font-mono font-bold">{combinedDataWithNotes.length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Filtered Rows:</span>
-                    <span className="font-mono font-bold">{filteredAndSortedData.length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Rows Per Page:</span>
-                    <span className="font-mono font-bold">
-                      {itemsPerPage >= 99999 ? "All" : itemsPerPage}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Estimated DOM Nodes:</span>
-                    <span className="font-mono font-bold">
-                      {itemsPerPage >= 99999 
-                        ? `~${(filteredAndSortedData.length * columns.length).toLocaleString()}`
-                        : `~${(Math.min(itemsPerPage, filteredAndSortedData.length) * columns.length).toLocaleString()}`
-                      }
-                    </span>
-                  </div>
-                </div>
-                {itemsPerPage >= 99999 && filteredAndSortedData.length > 500 && (
-                  <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
-                    ⚠️ Showing all rows may impact performance with large datasets
-                  </div>
-                )}
               </div>
 
-              {/* NEW: Firebase Cost Estimation */}
               <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
-                <h3 className="font-semibold text-green-900 mb-3">💰 Firebase Cost Optimizations Active</h3>
+                <h3 className="font-semibold text-green-900 mb-3">💰 SharePoint Storage Benefits</h3>
                 <div className="space-y-2 text-sm text-green-800">
                   <div className="flex items-start gap-2">
                     <span className="text-green-600">✓</span>
                     <div>
-                      <strong>Auto-save delay: 3 seconds</strong>
-                      <p className="text-xs text-green-700">Reduces writes by ~66% vs 1-second delay</p>
+                      <strong>Zero Firebase costs</strong>
+                      <p className="text-xs text-green-700">All notes stored in SharePoint Excel file</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="text-green-600">✓</span>
                     <div>
-                      <strong>Idle-based sync for editors</strong>
-                      <p className="text-xs text-green-700">Eliminates 80-90% of listener costs while editing</p>
+                      <strong>Manual save (prevents accidental overwrites)</strong>
+                      <p className="text-xs text-green-700">Click "Save to SharePoint" button when ready</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="text-green-600">✓</span>
                     <div>
-                      <strong>Smart import (skip unchanged)</strong>
-                      <p className="text-xs text-green-700">Reduces repeat import writes by 50-90%</p>
+                      <strong>30-second refresh cycle</strong>
+                      <p className="text-xs text-green-700">Automatically syncs with SharePoint</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="text-green-600">✓</span>
                     <div>
-                      <strong>Debounced listener updates: 500ms</strong>
-                      <p className="text-xs text-green-700">Batches state updates to reduce re-renders</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-green-600">✓</span>
-                    <div>
-                      <strong>Reduced buffer: ±10 rows</strong>
-                      <p className="text-xs text-green-700">20% fewer listeners vs ±25 row buffer</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-green-600">✓</span>
-                    <div>
-                      <strong>Notes cache for off-screen rows</strong>
-                      <p className="text-xs text-green-700">Reduces read operations by 40-60%</p>
+                      <strong>All data in one place</strong>
+                      <p className="text-xs text-green-700">Notes stored alongside tickets and reports</p>
                     </div>
                   </div>
                 </div>
                 <div className="mt-4 pt-4 border-t border-green-300">
                   <p className="text-sm font-semibold text-green-900">
-                    💡 Estimated total Firebase cost reduction: 60-80%
+                    💡 Estimated annual savings: $120-600 vs Firebase
                   </p>
                   <p className="text-xs text-green-700 mt-1">
-                    Cache hit rate: {combinedDataWithNotes.length > 0 
-                      ? ((notesCache.size / combinedDataWithNotes.length) * 100).toFixed(1) 
-                      : '0'}%
+                    File location: SharePoint/Shared Documents/repair_notes.xlsx
                   </p>
                 </div>
               </div>
@@ -1660,7 +1390,7 @@ const RepairTrackerSheet = () => {
             <div className="text-center max-w-lg bg-white p-12 rounded-lg shadow-lg">
               <FileSpreadsheet className="mx-auto text-blue-500 mb-6" size={64} />
               <h3 className="text-2xl font-semibold text-gray-800 mb-3">Welcome to Repair Tracker</h3>
-              <p className="text-gray-600 mb-6">Sign in to load data from SharePoint, or upload files manually.</p>
+              <p className="text-gray-600 mb-6">Sign in to load data from SharePoint.</p>
             </div>
           </div>
         ) : getCurrentData().length === 0 ? (
@@ -1714,7 +1444,13 @@ const RepairTrackerSheet = () => {
       {showCategoryManager && <CategoryManager />}
 
       {editingRow && (
-        <RowEditor row={editingRow} rowIndex={editingRowIndex} onClose={closeRowEditor} />
+        <RowEditor 
+          row={editingRow} 
+          rowIndex={editingRowIndex} 
+          onClose={closeRowEditor}
+          notesService={notesService}
+          onSave={handleNoteSaved}
+        />
       )}
     </div>
   );
