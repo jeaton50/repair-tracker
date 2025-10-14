@@ -1,14 +1,14 @@
-// src/oneDriveService1.js
+// src/oneDriveService.js
 import * as XLSX from "xlsx";
 import { ResponseType } from "@microsoft/microsoft-graph-client";
 
 /**
  * OneDrive/SharePoint file reader & writer focused on SharePoint site libraries.
- * Requires delegated Microsoft Graph scopes. Minimum:
+ * Scopes needed:
  *  - Files.Read.All (read)
  *  - Files.ReadWrite.All (upload/replace)
  *
- * Usage (read Excel):
+ * Example (read Excel):
  *   const ods = new OneDriveService(graphClient);
  *   const rows = await ods.readExcelFromSharePoint({
  *     hostname: "rentexinc.sharepoint.com",
@@ -16,15 +16,13 @@ import { ResponseType } from "@microsoft/microsoft-graph-client";
  *     fileRelativePath: "General/Repairs/RepairTracker/ticket_list.xlsx"
  *   });
  *
- * Usage (upload/replace Excel from an ArrayBuffer/Blob):
+ * Example (upload Excel from ArrayBuffer/Blob):
  *   await ods.uploadExcelToSharePoint({
  *     hostname: "rentexinc.sharepoint.com",
  *     sitePath: "/sites/ProductManagers",
  *     fileRelativePath: "General/Repairs/RepairTracker/ticket_list.xlsx",
  *     fileContent: arrayBufferOrBlob
  *   });
- *
- * Tip: For large files (>4MB), consider using upload sessions (createUploadSession).
  */
 export default class OneDriveService {
   constructor(client) {
@@ -35,42 +33,80 @@ export default class OneDriveService {
 
   // Resolve site + default "Documents" drive
   async _getSiteAndDefaultDrive(hostname, sitePath) {
-    // Examples:
-    //   hostname: "rentexinc.sharepoint.com"
-    //   sitePath: "/sites/ProductManagers"
-    const site = await this.client.api(`/sites/${hostname}:${sitePath}`).get();
-    const drive = await this.client.api(`/sites/${site.id}/drive`).get(); // default document library
-    return { site, drive };
+    // hostname: "rentexinc.sharepoint.com"
+    // sitePath: "/sites/ProductManagers"
+    const siteUrl = `/sites/${hostname}:${sitePath}`;
+    try {
+      const site = await this.client.api(siteUrl).get();
+      const drive = await this.client.api(`/sites/${site.id}/drive`).get(); // default doc lib
+      return { site, drive };
+    } catch (e) {
+      console.error("Failed to resolve site/drive", {
+        hostname,
+        sitePath,
+        status: e?.statusCode,
+        code: e?.code,
+        message: e?.message,
+      });
+      throw e;
+    }
   }
 
   // Get file content (binary) from SharePoint by relative path within the library
   async _getSpBinary({ hostname, sitePath, fileRelativePath }) {
     const { site, drive } = await this._getSiteAndDefaultDrive(hostname, sitePath);
     const encoded = fileRelativePath.split("/").map(encodeURIComponent).join("/");
-    return this.client
-      .api(`/sites/${site.id}/drives/${drive.id}/root:/${encoded}:/content`)
-      .responseType(ResponseType.ARRAYBUFFER)
-      .get();
+    const url = `/sites/${site.id}/drives/${drive.id}/root:/${encoded}:/content`;
+    try {
+      return await this.client.api(url).responseType(ResponseType.ARRAYBUFFER).get();
+    } catch (e) {
+      console.error("Graph _getSpBinary error", {
+        url,
+        status: e?.statusCode,
+        code: e?.code,
+        message: e?.message,
+        body: e?.body,
+      });
+      throw e;
+    }
   }
 
   // Get file content (text) from SharePoint by relative path within the library
   async _getSpText({ hostname, sitePath, fileRelativePath }) {
     const { site, drive } = await this._getSiteAndDefaultDrive(hostname, sitePath);
     const encoded = fileRelativePath.split("/").map(encodeURIComponent).join("/");
-    return this.client
-      .api(`/sites/${site.id}/drives/${drive.id}/root:/${encoded}:/content`)
-      .responseType(ResponseType.TEXT)
-      .get();
+    const url = `/sites/${site.id}/drives/${drive.id}/root:/${encoded}:/content`;
+    try {
+      return await this.client.api(url).responseType(ResponseType.TEXT).get();
+    } catch (e) {
+      console.error("Graph _getSpText error", {
+        url,
+        status: e?.statusCode,
+        code: e?.code,
+        message: e?.message,
+        body: e?.body,
+      });
+      throw e;
+    }
   }
 
   // Put file content (binary) to SharePoint by relative path within the library
   async _putSpBinary({ hostname, sitePath, fileRelativePath, fileContent }) {
     const { site, drive } = await this._getSiteAndDefaultDrive(hostname, sitePath);
     const encoded = fileRelativePath.split("/").map(encodeURIComponent).join("/");
-    // For files <= ~4MB, simple PUT to /content is fine. For larger, use upload session.
-    return this.client
-      .api(`/sites/${site.id}/drives/${drive.id}/root:/${encoded}:/content`)
-      .put(fileContent);
+    const url = `/sites/${site.id}/drives/${drive.id}/root:/${encoded}:/content`;
+    try {
+      return await this.client.api(url).put(fileContent);
+    } catch (e) {
+      console.error("Graph _putSpBinary error", {
+        url,
+        status: e?.statusCode,
+        code: e?.code,
+        message: e?.message,
+        body: e?.body,
+      });
+      throw e;
+    }
   }
 
   /* ------------------------------ Public API -------------------------------- */
@@ -88,10 +124,10 @@ export default class OneDriveService {
   /**
    * Upload (create or replace) an Excel file at the given SharePoint path.
    * @param {Object} opts
-   * @param {string} opts.hostname - e.g., "rentexinc.sharepoint.com"
-   * @param {string} opts.sitePath - e.g., "/sites/ProductManagers"
-   * @param {string} opts.fileRelativePath - e.g., "General/Repairs/RepairTracker/ticket_list.xlsx"
-   * @param {ArrayBuffer|Blob|Uint8Array|ReadableStream} opts.fileContent - Excel binary to upload
+   * @param {string} opts.hostname
+   * @param {string} opts.sitePath
+   * @param {string} opts.fileRelativePath
+   * @param {ArrayBuffer|Blob|Uint8Array|ReadableStream} opts.fileContent
    */
   async uploadExcelToSharePoint({ hostname, sitePath, fileRelativePath, fileContent }) {
     try {
@@ -103,36 +139,45 @@ export default class OneDriveService {
     }
   }
 
+  // Optional: quick probe to verify connectivity & IDs
+  async debugProbe({ hostname, sitePath }) {
+    const { site, drive } = await this._getSiteAndDefaultDrive(hostname, sitePath);
+    console.info("SharePoint probe OK", { siteId: site.id, driveId: drive.id });
+    return { site, drive };
+  }
+
   /* ------------------------------ Local helpers ----------------------------- */
 
   /**
-   * Convert an XLSX ArrayBuffer in to an array of row objects.
-   * Assumes: row 2 (index 1) contains headers, data starts at row 3.
+   * Convert an XLSX ArrayBuffer into an array of row objects.
+   * Tries row 2 as headers (your original layout), falls back to row 1 if needed.
    */
   _xlsxToRows(arrayBuffer) {
     const wb = XLSX.read(arrayBuffer, { type: "array", cellDates: true });
     const sheet = wb.Sheets[wb.SheetNames[0]];
     const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
 
-    if (raw.length < 2) return [];
+    if (!raw.length) return [];
 
-    const headers = (raw[1] || [])
+    // Prefer row 2 as headers; if empty, use row 1
+    const headerRow = (raw[1] && raw[1].some(v => v !== "")) ? raw[1] : raw[0];
+    const startIdx = headerRow === raw[1] ? 2 : 1;
+
+    const headers = (headerRow || [])
       .map(h => String(h || "").trim())
       .filter(Boolean);
 
+    if (!headers.length) return [];
+
     return raw
-      .slice(2)
+      .slice(startIdx)
       .filter(row => row && row.some(c => c !== "" && c != null))
       .map(row => Object.fromEntries(headers.map((h, i) => [h, row[i] ?? ""])));
   }
 
   /**
-   * Optional helper: build an Excel workbook (ArrayBuffer) from either a 2D array (AOA)
+   * Build an Excel workbook (ArrayBuffer) from either a 2D array (AOA)
    * or an array of objects (rows). Returns an ArrayBuffer ready for upload.
-   * @param {Object} param0
-   * @param {Array<Array<any>>} [param0.aoa] - 2D array including header row
-   * @param {Array<Object>} [param0.rows] - array of objects (keys become headers)
-   * @param {string} [param0.sheetName="Sheet1"]
    */
   buildExcelArrayBuffer({ aoa, rows, sheetName = "Sheet1" } = {}) {
     const wb = XLSX.utils.book_new();
@@ -147,19 +192,18 @@ export default class OneDriveService {
     }
 
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
-    // Write as ArrayBuffer (type: "array")
-    const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    return out; // ArrayBuffer
+    return XLSX.write(wb, { bookType: "xlsx", type: "array" }); // ArrayBuffer
   }
 
   /* ---------------------- Large file uploads (optional) --------------------- */
   /**
-   * For files >4MB, you can use an upload session:
+   * For files >4MB, use an upload session:
+   *
    *   const { site, drive } = await this._getSiteAndDefaultDrive(hostname, sitePath);
    *   const encoded = fileRelativePath.split("/").map(encodeURIComponent).join("/");
    *   const session = await this.client
    *     .api(`/sites/${site.id}/drives/${drive.id}/root:/${encoded}:/createUploadSession`)
    *     .post({ item: { "@microsoft.graph.conflictBehavior": "replace" }});
-   *   // then chunked PUTs to session.uploadUrl
+   *   // then PUT chunks to session.uploadUrl
    */
 }
