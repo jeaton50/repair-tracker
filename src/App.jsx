@@ -190,7 +190,7 @@ const RowEditor = ({ row, rowIndex, onClose, notesService, onSave }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
         <div className="p-6 border-b flex justify-between items-center">
           <div>
             <h2 className="text-xl font-bold text-gray-800">Edit Repair Item</h2>
@@ -222,13 +222,14 @@ const RowEditor = ({ row, rowIndex, onClose, notesService, onSave }) => {
               </button>
             </div>
             <textarea
-              name="meetingNote"
-              value={meetingNote}
-              onChange={(e) => setMeetingNote(e.target.value)}
-              placeholder="Add meeting notes here... (click Save button when done)"
-              className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-              disabled={isLoading || isSaving}
-            />
+  name="meetingNote"
+  value={meetingNote}
+  onChange={(e) => setMeetingNote(e.target.value)}
+  placeholder="Add meeting notes here... (click Save button when done)"
+  rows={18}
+  className="w-full min-h-[22rem] md:min-h-[26rem] px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+  disabled={isLoading || isSaving}
+/>
           </div>
 
           <div>
