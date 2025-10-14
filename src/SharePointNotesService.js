@@ -1,199 +1,202 @@
-// src/sharePointNotesService.js
+// src/SharePointNotesService.js
 import * as XLSX from "xlsx";
 
 /**
- * Service for reading/writing repair notes to SharePoint Excel file
+ * Service for reading/writing repair notes to a SharePoint Excel file via OneDriveService.
  * Replaces Firebase Firestore.
+ *
+ * Columns (Excel):
+ *   "Barcode#", "Meeting Note", "Requires Follow Up", "Last Updated"
+ *
+ * Usage:
+ *   const notesSvc = new SharePointNotesService(oneDriveService, {
+ *     spHostname: "rentexinc.sharepoint.com",
+ *     spSitePath: "/sites/ProductManagers",
+ *     spBasePath: "General/Repairs/RepairTracker",
+ *     // notesFile: "repair_notes.xlsx" // optional
+ *   });
  */
-class SharePointNotesService {
+export default class SharePointNotesService {
   constructor(oneDriveService, config) {
     this.ods = oneDriveService;
-    this.config = config;
-    this.notesCache = new Map(); // In-memory cache
-    this.saveQueue = new Map(); // Pending saves
+    this.config = {
+      ...config,
+      notesFile: config?.notesFile || "repair_notes.xlsx",
+    };
+    this.notesCache = new Map(); // In-memory cache { BARCODE -> {barcode, meetingNote, requiresFollowUp, lastUpdated} }
+    this.saveQueue = new Map();  // Pending saves { BARCODE -> note | null (delete) }
     this.isSaving = false;
   }
 
-  /**
-   * Load all notes from SharePoint Excel file
-   */
+  /* ------------------------------ internals -------------------------------- */
+
+  _filePath() {
+    const base = (this.config.spBasePath || "").replace(/\/+$/g, "");
+    return `${base}/${this.config.notesFile}`.replace(/^\/+/g, "");
+  }
+
+  _normBarcode(bc) {
+    return bc ? String(bc).trim().toUpperCase() : "";
+  }
+
+  _noteShape(note = {}) {
+    return {
+      barcode: this._normBarcode(note.barcode ?? note["Barcode#"] ?? note["Barcode"]),
+      meetingNote: String(note.meetingNote ?? note["Meeting Note"] ?? "").trim(),
+      requiresFollowUp: String(note.requiresFollowUp ?? note["Requires Follow Up"] ?? "").trim(),
+      lastUpdated: note.lastUpdated ?? note["Last Updated"] ?? new Date().toISOString(),
+    };
+  }
+
+  /* --------------------------------- API ----------------------------------- */
+
+  /** Load all notes from SharePoint Excel file into cache and return a Map. */
   async loadAllNotes() {
     try {
-      console.log("📥 Loading notes from SharePoint...");
-      
-      const notes = await this.ods.readExcelFromSharePoint({
+      console.log("📥 Loading notes from SharePoint…", this._filePath());
+      const rows = await this.ods.readExcelFromSharePoint({
         hostname: this.config.spHostname,
         sitePath: this.config.spSitePath,
-        fileRelativePath: `${this.config.spBasePath}/repair_notes.xlsx`,
+        fileRelativePath: this._filePath(),
       });
 
-      // Convert array to Map for faster lookup
-      const notesMap = new Map();
-      notes.forEach(note => {
-        if (note["Barcode#"]) {
-          notesMap.set(note["Barcode#"], {
-            barcode: note["Barcode#"],
-            meetingNote: note["Meeting Note"] || "",
-            requiresFollowUp: note["Requires Follow Up"] || "",
-            lastUpdated: note["Last Updated"] || new Date().toISOString(),
-          });
-        }
+      const map = new Map();
+      (rows || []).forEach(r => {
+        const shaped = this._noteShape(r);
+        if (shaped.barcode) map.set(shaped.barcode, shaped);
       });
 
-      this.notesCache = notesMap;
-      console.log(`✅ Loaded ${notesMap.size} notes from SharePoint`);
-      return notesMap;
-    } catch (error) {
-      // File doesn't exist yet, return empty map
-      if (error.message?.includes("404") || error.message?.includes("not found")) {
-        console.log("📝 Notes file doesn't exist yet, starting fresh");
+      this.notesCache = map;
+      console.log(`✅ Loaded ${map.size} notes from ${this._filePath()}`);
+      return map;
+    } catch (e) {
+      // Common "file not found" signatures from Graph SDK
+      const status = e?.statusCode || e?.status;
+      const code = e?.code || e?.body?.error?.code;
+      if (status === 404 || code === "itemNotFound" || /404|not\s*found/i.test(String(e?.message))) {
+        console.warn("📝 Notes file not found; starting with empty cache:", this._filePath());
         this.notesCache = new Map();
-        return new Map();
+        return this.notesCache;
       }
-      console.error("❌ Error loading notes:", error);
-      throw error;
+      console.error("❌ Error loading notes:", e);
+      throw e;
     }
   }
 
-  /**
-   * Get note for specific barcode (from cache)
-   */
+  /** Get a single note from cache; returns an empty shell if missing. */
   getNote(barcode) {
-    return this.notesCache.get(barcode) || {
-      barcode,
+    const key = this._normBarcode(barcode);
+    return this.notesCache.get(key) || {
+      barcode: key,
       meetingNote: "",
       requiresFollowUp: "",
       lastUpdated: null,
     };
   }
 
-  /**
-   * Update note in cache and queue for save
-   */
+  /** Upsert a note in cache and queue it for save. */
   updateNote(barcode, meetingNote, requiresFollowUp) {
+    const key = this._normBarcode(barcode);
+    if (!key) return null;
+
     const note = {
-      barcode,
+      barcode: key,
       meetingNote: meetingNote || "",
       requiresFollowUp: requiresFollowUp || "",
       lastUpdated: new Date().toISOString(),
     };
 
-    // Update cache immediately
-    this.notesCache.set(barcode, note);
-
-    // Queue for save
-    this.saveQueue.set(barcode, note);
-
+    this.notesCache.set(key, note);
+    this.saveQueue.set(key, note);
     return note;
   }
 
-  /**
-   * Delete note
-   */
+  /** Delete a note (queue the deletion). */
   deleteNote(barcode) {
-    this.notesCache.delete(barcode);
-    this.saveQueue.set(barcode, null); // Mark for deletion
+    const key = this._normBarcode(barcode);
+    if (!key) return;
+    this.notesCache.delete(key);
+    this.saveQueue.set(key, null); // mark for deletion
   }
 
-  /**
-   * Save all queued changes to SharePoint
-   */
+  /** Persist queued changes to SharePoint (rebuilds & uploads the Excel). */
   async saveToSharePoint() {
     if (this.saveQueue.size === 0) {
-      console.log("No changes to save");
+      console.log("ℹ️ No changes to save.");
       return;
     }
-
     if (this.isSaving) {
-      console.log("Save already in progress, skipping...");
+      console.log("⏳ Save already in progress; skipping this call.");
       return;
     }
 
     this.isSaving = true;
-    const changesToSave = new Map(this.saveQueue);
+    const batch = new Map(this.saveQueue);
     this.saveQueue.clear();
 
     try {
-      console.log(`💾 Saving ${changesToSave.size} note changes to SharePoint...`);
+      console.log(`💾 Applying ${batch.size} change(s) to cache and uploading workbook…`);
 
-      // Apply queued changes to cache
-      changesToSave.forEach((note, barcode) => {
-        if (note === null) {
-          // Delete
-          this.notesCache.delete(barcode);
-        } else {
-          // Update
-          this.notesCache.set(barcode, note);
-        }
+      // Apply queued changes to the cache snapshot
+      batch.forEach((note, bc) => {
+        if (note === null) this.notesCache.delete(bc);
+        else this.notesCache.set(bc, note);
       });
 
-      // Convert Map to array for Excel
-      const notesArray = Array.from(this.notesCache.values()).map(note => ({
-        "Barcode#": note.barcode,
-        "Meeting Note": note.meetingNote,
-        "Requires Follow Up": note.requiresFollowUp,
-        "Last Updated": note.lastUpdated,
+      // Convert cache to array of rows for Excel
+      const rows = Array.from(this.notesCache.values()).map(n => ({
+        "Barcode#": n.barcode,
+        "Meeting Note": n.meetingNote,
+        "Requires Follow Up": n.requiresFollowUp,
+        "Last Updated": n.lastUpdated,
       }));
 
-      // Create Excel workbook
-      const ws = XLSX.utils.json_to_sheet(notesArray);
+      // Build the worksheet with modest column widths (optional)
+      const ws = XLSX.utils.json_to_sheet(rows, { skipHeader: false });
+      ws["!cols"] = [
+        { wch: 16 }, // Barcode#
+        { wch: 60 }, // Meeting Note
+        { wch: 28 }, // Requires Follow Up
+        { wch: 24 }, // Last Updated
+      ];
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Repair Notes");
+      const fileContent = XLSX.write(wb, { bookType: "xlsx", type: "array" }); // ArrayBuffer
 
-      // Set column widths
-      ws['!cols'] = [
-        { wch: 15 },  // Barcode#
-        { wch: 50 },  // Meeting Note
-        { wch: 40 },  // Requires Follow Up
-        { wch: 20 },  // Last Updated
-      ];
-
-      // Convert to binary
-      const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-
-      // Upload to SharePoint
       await this.ods.uploadExcelToSharePoint({
         hostname: this.config.spHostname,
         sitePath: this.config.spSitePath,
-        fileRelativePath: `${this.config.spBasePath}/repair_notes.xlsx`,
-        data: excelBuffer,
+        fileRelativePath: this._filePath(),
+        fileContent, // <-- IMPORTANT: OneDriveService expects fileContent
       });
 
-      console.log(`✅ Saved ${changesToSave.size} notes to SharePoint`);
-    } catch (error) {
-      console.error("❌ Error saving notes:", error);
-      // Re-queue failed saves
-      changesToSave.forEach((note, barcode) => {
-        this.saveQueue.set(barcode, note);
-      });
-      throw error;
+      console.log(`✅ Saved ${batch.size} change(s) to ${this._filePath()}`);
+    } catch (e) {
+      console.error("❌ Error saving notes; re-queuing failed batch:", e);
+      // Re-queue the failed changes
+      batch.forEach((note, bc) => this.saveQueue.set(bc, note));
+      throw e;
     } finally {
       this.isSaving = false;
     }
   }
 
-  /**
-   * Batch import notes from array
-   */
+  /** Bulk import notes (array of { barcode, meetingNote, requiresFollowUp, lastUpdated? }) and persist. */
   async importNotes(notesArray) {
-    console.log(`📥 Importing ${notesArray.length} notes...`);
-    
-    notesArray.forEach(note => {
-      if (note.barcode) {
-        this.updateNote(note.barcode, note.meetingNote, note.requiresFollowUp);
+    const list = Array.isArray(notesArray) ? notesArray : [];
+    console.log(`📥 Importing ${list.length} note(s)…`);
+    for (const n of list) {
+      const shaped = this._noteShape(n);
+      if (shaped.barcode) {
+        this.updateNote(shaped.barcode, shaped.meetingNote, shaped.requiresFollowUp);
       }
-    });
-
+    }
     await this.saveToSharePoint();
-    console.log(`✅ Imported ${notesArray.length} notes`);
+    console.log("✅ Import complete.");
   }
 
-  /**
-   * Get all notes as array
-   */
+  /** Get all notes as a plain array. */
   getAllNotes() {
     return Array.from(this.notesCache.values());
   }
 }
-
-export default SharePointNotesService;

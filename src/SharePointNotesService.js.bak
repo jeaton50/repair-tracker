@@ -3,7 +3,7 @@ import * as XLSX from "xlsx";
 
 /**
  * Service for reading/writing repair notes to SharePoint Excel file
- * Replaces Firebase Firestore
+ * Replaces Firebase Firestore.
  */
 class SharePointNotesService {
   constructor(oneDriveService, config) {
