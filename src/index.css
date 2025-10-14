@@ -1,3 +1,62 @@
+/* --- Tailwind base (keep these at the top) --- */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ========== Custom tweaks for inline note fields ========== */
+
+/* Default sizes you can tweak in one place */
+:root{
+  --note-min-h: 6rem;      /* ~96px ≈ 5–6 lines */
+  --note-max-h: 22rem;     /* cap so rows don’t blow up the table */
+  --followup-min-h: 4.5rem;/* ~72px ≈ 4–5 lines */
+}
+
+/* Bigger inline textarea for "Meeting Note" */
+textarea.note-input{
+  width: 100%;
+  min-height: var(--note-min-h);
+  max-height: var(--note-max-h);
+  resize: vertical;
+  padding: 0.5rem 0.75rem;
+  line-height: 1.25;
+  border: 1px solid #d1d5db;          /* gray-300 */
+  border-radius: 0.375rem;             /* rounded-md */
+  background: #fff;
+  font-size: 0.875rem;                 /* text-sm */
+  color: #111827;                      /* gray-900 */
+}
+
+/* Slightly smaller textarea for "Requires Follow Up" (if you inline it) */
+textarea.followup-input{
+  width: 100%;
+  min-height: var(--followup-min-h);
+  max-height: var(--note-max-h);
+  resize: vertical;
+  padding: 0.5rem 0.75rem;
+  line-height: 1.25;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  background: #fff;
+  font-size: 0.875rem;
+  color: #111827;
+}
+
+/* Focus ring to match Tailwind focus styles */
+textarea.note-input:focus,
+textarea.followup-input:focus{
+  outline: none;
+  border-color: transparent;
+  box-shadow: 0 0 0 2px rgba(59,130,246,.5); /* ring-2 ring-blue-500/50 */
+}
+
+/* Table cells: ensure long notes wrap nicely */
+td, th{
+  word-break: break-word;
+  white-space: normal;
+}
+
+/* Optional: soften the table row hover for readability */
+tr:hover td{
+  background-color: rgba(59,130,246,0.04); /* light blue tint */
+}
