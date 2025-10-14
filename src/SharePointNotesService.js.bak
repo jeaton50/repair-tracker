@@ -3,13 +3,13 @@ import * as XLSX from "xlsx";
 
 /**
  * Service for reading/writing repair notes to a SharePoint Excel file via OneDriveService.
- * (Replaces Firebase)
- *
- * Expected columns in the workbook:
+ * Expected columns:
  *   "Barcode#", "Meeting Note", "Requires Follow Up", "Last Updated"
  *
- * NOTE: This class does not change how your OneDriveService parses sheets.
- * It only ensures uploads are browser-safe (Blob), and folder path exists.
+ * NOTE: OneDriveService._xlsxToRows() assumes:
+ *   - headers on row 2
+ *   - data starts row 3
+ * This writer preserves that by inserting a blank first row.
  */
 export default class SharePointNotesService {
   /**
@@ -45,11 +45,13 @@ export default class SharePointNotesService {
   }
 
   _shapeFromRow(row) {
+    // Accept either "Barcode#" or "Barcode" just in case
+    const bc = row["Barcode#"] ?? row["Barcode"];
     return {
-      barcode: this._normBarcode(row["Barcode#"] ?? row["Barcode"]),
+      barcode: this._normBarcode(bc),
       meetingNote: String(row["Meeting Note"] ?? "").trim(),
       requiresFollowUp: String(row["Requires Follow Up"] ?? "").trim(),
-      lastUpdated: row["Last Updated"] ?? new Date().toISOString(),
+      lastUpdated: row["Last Updated"] || new Date().toISOString(),
     };
   }
 
@@ -66,10 +68,11 @@ export default class SharePointNotesService {
 
   /**
    * Load all notes from SharePoint Excel into memory.
-   * Uses your existing OneDriveService reader (keeps tickets/reports behavior unchanged).
+   * Uses OneDriveService.readExcelFromSharePoint (headers row 2, data row 3).
    */
   async loadAllNotes() {
     try {
+      console.log("📥 Loading notes from SharePoint...");
       const rows = await this.ods.readExcelFromSharePoint({
         hostname: this.config.spHostname,
         sitePath: this.config.spSitePath,
@@ -131,8 +134,8 @@ export default class SharePointNotesService {
   /**
    * Persist queued changes to SharePoint:
    * - Ensures folders exist (no 404 on first save)
-   * - Builds workbook
-   * - Uploads as Blob (browser-safe; avoids Node Buffer)
+   * - Builds workbook with a BLANK row 1 and headers on row 2
+   * - Uploads as Blob (browser-safe)
    */
   async saveToSharePoint() {
     if (this.saveQueue.size === 0) {
@@ -163,8 +166,18 @@ export default class SharePointNotesService {
         "Last Updated": n.lastUpdated,
       }));
 
-      // Build workbook
-      const ws = XLSX.utils.json_to_sheet(rows, { skipHeader: false });
+      // ---- Build workbook with blank row1 + headers row2 (for your reader) ----
+      const headers = ["Barcode#", "Meeting Note", "Requires Follow Up", "Last Updated"];
+      const dataRows = rows.map(r => [
+        r["Barcode#"], r["Meeting Note"], r["Requires Follow Up"], r["Last Updated"]
+      ]);
+      const aoa = [
+        [],          // row 1: blank
+        headers,     // row 2: headers
+        ...dataRows, // row 3+: data
+      ];
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
       ws["!cols"] = [
         { wch: 16 }, // Barcode#
         { wch: 60 }, // Meeting Note
@@ -174,14 +187,14 @@ export default class SharePointNotesService {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Repair Notes");
 
-      // ArrayBuffer -> Blob (browser-safe; fixes "Buffer is not defined")
+      // ArrayBuffer -> Blob (browser-safe; avoids Node Buffer)
       const excelArrayBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
       const fileContent = new Blob([excelArrayBuffer], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
 
-      // Ensure folder chain exists before first upload
-      const folderPath = (this.config.spBasePath || "").replace(/\/+$/,"");
+      // Ensure folder chain exists before upload
+      const folderPath = (this.config.spBasePath || "").replace(/\/+$/, "");
       if (folderPath) {
         await this.ods.ensureFolderPath({
           hostname: this.config.spHostname,

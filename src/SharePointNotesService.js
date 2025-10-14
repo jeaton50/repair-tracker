@@ -235,7 +235,7 @@ export default class SharePointNotesService {
     await this.saveToSharePoint();
   }
 
-  /** Get all notes as a plain array. */
+  /** Get all notes as a plain array.. */
   getAllNotes() {
     return Array.from(this.notesCache.values());
   }
