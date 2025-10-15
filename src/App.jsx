@@ -85,29 +85,33 @@ const EditableCell = ({
 
   // ✅ Multiline (Meeting Note) now ONLY shows the textarea + Save
   // ✅ Multiline (Meeting Note): textarea on top, Save button underneath
+// Multiline (Meeting Note): textarea on top, Save button underneath
 if (multiline) {
   return (
-    <div className="flex flex-col items-start gap-2">
+    <div className="grid grid-cols-1 gap-2">
       <textarea
         {...commonProps}
         rows={6}
         style={{ minHeight: "7rem" }}
         className={`${inputWidth} note-input text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
       />
-      <button
-        type="button"
-        className="mt-1 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-        onClick={(e) => {
-          e.stopPropagation();
-          onSave?.();
-        }}
-        title="Save now"
-      >
-        Save
-      </button>
+      <div>
+        <button
+          type="button"
+          className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSave?.();
+          }}
+          title="Save now"
+        >
+          Save
+        </button>
+      </div>
     </div>
   );
 }
+
 
 
   // Single-line (Requires Follow Up) stays as-is
