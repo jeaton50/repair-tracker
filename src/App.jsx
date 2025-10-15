@@ -52,20 +52,22 @@ const useDebounce = (callback, delay) => {
 
 /* ---------- Tiny inline editor for Quick Edit ---------- */
 // ---------- Inline editable cell ----------
-// ---------- EditableCell (merged) ----------
+// ---------- EditableCell ----------
 const EditableCell = ({
   value,
   onChange,
   onSave,
   multiline = false,
   placeholder = "",
-  inputWidth = "w-full", // e.g. "w-12ch" for Follow Up
+  inputWidth = "w-full",
 }) => {
+  // Save on Ctrl/Cmd+S, stop row clicks while editing
   const onKeyDown = (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
       e.preventDefault();
       onSave?.();
     }
+    // For single-line, Enter saves
     if (!multiline && e.key === "Enter") {
       e.preventDefault();
       onSave?.();
@@ -81,12 +83,12 @@ const EditableCell = ({
     onClick: (e) => e.stopPropagation(),
     onMouseDown: (e) => e.stopPropagation(),
     className:
-      `${inputWidth} max-w-full block text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent`,
+      `${inputWidth} text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent`,
   };
 
   if (multiline) {
     return (
-      <div className="flex flex-col items-stretch gap-2">
+      <div className="flex items-start gap-2">
         <textarea
           {...commonProps}
           rows={6}
@@ -94,8 +96,11 @@ const EditableCell = ({
         />
         <button
           type="button"
-          className="self-start px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-          onClick={(e) => { e.stopPropagation(); onSave?.(); }}
+          className="shrink-0 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSave?.();
+          }}
           title="Save now"
         >
           Save
@@ -104,14 +109,16 @@ const EditableCell = ({
     );
   }
 
-  // single-line (e.g., Requires Follow Up)
   return (
-    <div className="flex flex-col items-stretch gap-2">
+    <div className="flex items-center gap-2">
       <input {...commonProps} />
       <button
         type="button"
-        className="self-start px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-        onClick={(e) => { e.stopPropagation(); onSave?.(); }}
+        className="shrink-0 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+        onClick={(e) => {
+          e.stopPropagation();
+          onSave?.();
+        }}
         title="Save now"
       >
         Save
@@ -119,6 +126,7 @@ const EditableCell = ({
     </div>
   );
 };
+
 
 
   return (
@@ -483,6 +491,7 @@ const PaginatedTable = ({
     </div>
   );
 };
+
 
 
 

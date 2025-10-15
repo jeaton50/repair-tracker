@@ -52,14 +52,14 @@ const useDebounce = (callback, delay) => {
 
 /* ---------- Tiny inline editor for Quick Edit ---------- */
 // ---------- Inline editable cell ----------
-// ---------- EditableCell (merged) ----------
+// ---------- EditableCell ----------
 const EditableCell = ({
   value,
   onChange,
   onSave,
   multiline = false,
   placeholder = "",
-  inputWidth = "w-full", // e.g. "w-20ch" to force ~20 characters width
+  inputWidth = "w-full",
 }) => {
   // Save on Ctrl/Cmd+S, stop row clicks while editing
   const onKeyDown = (e) => {
@@ -82,7 +82,8 @@ const EditableCell = ({
     onKeyDown,
     onClick: (e) => e.stopPropagation(),
     onMouseDown: (e) => e.stopPropagation(),
-    className: `${inputWidth} text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent`,
+    className:
+      `${inputWidth} text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent`,
   };
 
   if (multiline) {
@@ -91,13 +92,8 @@ const EditableCell = ({
         <textarea
           {...commonProps}
           rows={6}
-          style={{ minHeight: "7rem" }} // nice multi-line height
-		  className={`${inputWidth} note-input text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+          style={{ minHeight: "7rem" }}
         />
-		<input
-  {...commonProps}
-  className={`${inputWidth} followup-input text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-/>
         <button
           type="button"
           className="shrink-0 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
@@ -112,6 +108,26 @@ const EditableCell = ({
       </div>
     );
   }
+
+  return (
+    <div className="flex items-center gap-2">
+      <input {...commonProps} />
+      <button
+        type="button"
+        className="shrink-0 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+        onClick={(e) => {
+          e.stopPropagation();
+          onSave?.();
+        }}
+        title="Save now"
+      >
+        Save
+      </button>
+    </div>
+  );
+};
+
+
 
   return (
     <div className="flex items-center gap-2">
