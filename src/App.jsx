@@ -53,6 +53,7 @@ const useDebounce = (callback, delay) => {
 /* ---------- Tiny inline editor for Quick Edit ---------- */
 // ---------- Inline editable cell ----------
 // ---------- EditableCell (merged) ----------
+// ---------- EditableCell (updated) ----------
 const EditableCell = ({
   value,
   onChange,
@@ -60,6 +61,7 @@ const EditableCell = ({
   multiline = false,
   placeholder = "",
   inputWidth = "w-full",
+  saveBelow = false, // NEW: stack Save under input when true
 }) => {
   const onKeyDown = (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
@@ -83,38 +85,57 @@ const EditableCell = ({
     className: `${inputWidth} text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent`,
   };
 
-  // ✅ Multiline (Meeting Note) now ONLY shows the textarea + Save
-  // ✅ Multiline (Meeting Note): textarea on top, Save button underneath
-// Multiline (Meeting Note): textarea on top, Save button underneath
-if (multiline) {
-  return (
-    <div className="grid grid-cols-1 gap-2">
-      <textarea
-        {...commonProps}
-        rows={6}
-        style={{ minHeight: "7rem" }}
-        className={`${inputWidth} note-input text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-      />
-      <div>
-        <button
-          type="button"
-          className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-          onClick={(e) => {
-            e.stopPropagation();
-            onSave?.();
-          }}
-          title="Save now"
-        >
-          Save
-        </button>
+  // Multiline (Meeting Note): textarea on top, Save underneath (already done)
+  if (multiline) {
+    return (
+      <div className="grid grid-cols-1 gap-2">
+        <textarea
+          {...commonProps}
+          rows={6}
+          style={{ minHeight: "7rem" }}
+          className={`${inputWidth} note-input text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+        />
+        <div>
+          <button
+            type="button"
+            className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSave?.();
+            }}
+            title="Save now"
+          >
+            Save
+          </button>
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
+  // Single-line (Requires Follow Up)
+  if (saveBelow) {
+    // NEW: stack Save under the input
+    return (
+      <div className="grid grid-cols-1 gap-2">
+        <input {...commonProps} />
+        <div>
+          <button
+            type="button"
+            className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSave?.();
+            }}
+            title="Save now"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-
-  // Single-line (Requires Follow Up) stays as-is
+  // Default: side-by-side
   return (
     <div className="flex items-center gap-2">
       <input {...commonProps} />
@@ -132,6 +153,7 @@ if (multiline) {
     </div>
   );
 };
+
 
 
 
@@ -414,6 +436,7 @@ const PaginatedTable = ({
                             }
                             // follow-up ~12ch wide, meeting note fills the wider cell
                             inputWidth={col === "Requires Follow Up" ? "w-followup" : "w-full"}
+							saveBelow={col === "Requires Follow Up"}   // <-- NEW
 
                           />
                         </td>
