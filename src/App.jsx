@@ -340,7 +340,7 @@ const PaginatedTable = ({
   return (
     <div className="h-full flex flex-col bg-white rounded-lg shadow">
       <div className="flex-1 overflow-auto">
-        <table className="w-full border-collapse">
+        <table className="w-full border-collapse col-18ch-table">
           <thead className="bg-gray-50 border-b sticky top-0 z-10">
             <tr>
               {columns.map((col) => (

@@ -222,12 +222,12 @@ const RowEditor = ({ row, rowIndex, onClose, notesService, onSave }) => {
               </button>
             </div>
             <textarea
-  name="meetingNote"
+   name="meetingNote"
   value={meetingNote}
   onChange={(e) => setMeetingNote(e.target.value)}
   placeholder="Add meeting notes here... (click Save button when done)"
-  rows={18}
-  className="w-full min-h-[22rem] md:min-h-[26rem] px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+  rows={6}  // ~6 visible lines
+  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y text-sm leading-5"
   disabled={isLoading || isSaving}
 />
           </div>
