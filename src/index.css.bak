@@ -60,3 +60,14 @@ td, th{
 tr:hover td{
   background-color: rgba(59,130,246,0.04); /* light blue tint */
 }
+
+/* Make all table columns ~18 characters wide */
+.col-18ch-table th,
+.col-18ch-table td {
+  width: 18ch;        /* target width */
+  min-width: 18ch;    /* don’t shrink smaller */
+  max-width: 18ch;    /* keep consistent width */
+  white-space: normal;/* allow wrapping within the cell */
+  word-break: break-word;
+}
+
