@@ -52,15 +52,14 @@ const useDebounce = (callback, delay) => {
 
 /* ---------- Tiny inline editor for Quick Edit ---------- */
 // ---------- Inline editable cell ----------
-// ---------- EditableCell ----------
-// ---------- EditableCell ----------
+// ---------- EditableCell (merged) ----------
 const EditableCell = ({
   value,
   onChange,
   onSave,
   multiline = false,
   placeholder = "",
-  inputWidth = "w-full",
+  inputWidth = "w-full", // e.g. "w-20ch" to force ~20 characters width
 }) => {
   // Save on Ctrl/Cmd+S, stop row clicks while editing
   const onKeyDown = (e) => {
@@ -83,8 +82,7 @@ const EditableCell = ({
     onKeyDown,
     onClick: (e) => e.stopPropagation(),
     onMouseDown: (e) => e.stopPropagation(),
-    className:
-      `${inputWidth} text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent`,
+    className: `${inputWidth} text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent`,
   };
 
   if (multiline) {
@@ -93,8 +91,13 @@ const EditableCell = ({
         <textarea
           {...commonProps}
           rows={6}
-          style={{ minHeight: "7rem" }}
+          style={{ minHeight: "7rem" }} // nice multi-line height
+		  className={`${inputWidth} note-input text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
         />
+		<input
+  {...commonProps}
+  className={`${inputWidth} followup-input text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+/>
         <button
           type="button"
           className="shrink-0 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
@@ -127,8 +130,6 @@ const EditableCell = ({
     </div>
   );
 };
-
-
 
 
 // ---------- Row Editor (modal) ----------
@@ -474,7 +475,6 @@ const PaginatedTable = ({
     </div>
   );
 };
-
 
 
 
