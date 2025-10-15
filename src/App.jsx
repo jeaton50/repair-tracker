@@ -52,13 +52,14 @@ const useDebounce = (callback, delay) => {
 
 /* ---------- Tiny inline editor for Quick Edit ---------- */
 // ---------- Inline editable cell ----------
+// ---------- EditableCell (merged) ----------
 const EditableCell = ({
   value,
   onChange,
   onSave,
   multiline = false,
   placeholder = "",
-  inputWidth = "w-full",
+  inputWidth = "w-full", // e.g. "w-20ch" to force ~20 characters width
 }) => {
   // Save on Ctrl/Cmd+S, stop row clicks while editing
   const onKeyDown = (e) => {
@@ -81,8 +82,7 @@ const EditableCell = ({
     onKeyDown,
     onClick: (e) => e.stopPropagation(),
     onMouseDown: (e) => e.stopPropagation(),
-    className:
-      `${inputWidth} text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent`,
+    className: `${inputWidth} text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent`,
   };
 
   if (multiline) {
@@ -91,7 +91,7 @@ const EditableCell = ({
         <textarea
           {...commonProps}
           rows={6}
-          style={{ minHeight: "7rem" }}
+          style={{ minHeight: "7rem" }} // nice multi-line height
         />
         <button
           type="button"
@@ -125,6 +125,7 @@ const EditableCell = ({
     </div>
   );
 };
+
 
 // ---------- Row Editor (modal) ----------
 const RowEditor = ({ row, onClose, notesService, onSave }) => {
@@ -278,7 +279,7 @@ const RowEditor = ({ row, onClose, notesService, onSave }) => {
 };
 
 
-// ---------- Paginated Table Component (merged with inline editors) ----------
+// ---------- Paginated Table Component (with inline editing & 20ch Meeting Note) ----------
 const PaginatedTable = ({
   data,
   columns,
@@ -377,7 +378,9 @@ const PaginatedTable = ({
                             value={value}
                             onChange={onChange}
                             onSave={() => onInlineSaveNow()}
-                            multiline={col === "Meeting Note"}
+                            multiline={col === "Meeting Note"} // Meeting Note is multiline w/ 20ch width
+							inputWidth={col === "Meeting Note" ? "w-20ch" : "w-full"}
+							placeholder={col === "Meeting Note" ? "Type meeting note…" : "Follow up…"}
                             placeholder={
                               col === "Meeting Note"
                                 ? "Type meeting note…"
@@ -461,6 +464,7 @@ const PaginatedTable = ({
     </div>
   );
 };
+
 
 
 // ---------- Main component ----------
