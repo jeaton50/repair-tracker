@@ -395,7 +395,8 @@ const PaginatedTable = ({
                               col === "Meeting Note" ? "Type meeting note…" : "Follow up…"
                             }
                             // follow-up ~12ch wide, meeting note fills the wider cell
-                            inputWidth={col === "Requires Follow Up" ? "w-followup" : "w-full"} ? "w-12ch" : "w-full"}
+                            inputWidth={col === "Requires Follow Up" ? "w-followup" : "w-full"}
+
                           />
                         </td>
                       );
