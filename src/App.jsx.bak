@@ -58,6 +58,7 @@ const EditableCell = ({
   onSave,
   multiline = false,
   placeholder = "",
+  inputWidth = "w-full",
 }) => {
   // Save on Ctrl/Cmd+S, stop row clicks while editing
   const onKeyDown = (e) => {
@@ -81,7 +82,7 @@ const EditableCell = ({
     onClick: (e) => e.stopPropagation(),
     onMouseDown: (e) => e.stopPropagation(),
     className:
-      "w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent",
+      `${inputWidth} text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent`,
   };
 
   if (multiline) {
