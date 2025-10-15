@@ -1,6 +1,5 @@
 // src/App.jsx - SHAREPOINT VERSION (No Firebase3426) + Quick Edit wiring1
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Client } from "@microsoft/microsoft-graph-client";
 import { PublicClientApplication } from "@azure/msal-browser";
 import { msalConfig, loginRequest, graphConfig } from "./authConfig";

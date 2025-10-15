@@ -346,80 +346,77 @@ const PaginatedTable = ({
 
 
           <tbody className="bg-white divide-y">
-            {paginatedData.map((row, idx) => {
-              const hasAssignment = row["Assigned To"] && row["Assigned To"] !== "";
-              const rowBg =
-                activeTab === "combined" && !hasAssignment ? "bg-red-50" : "";
-              const actualIndex = startIdx + idx;
+  {paginatedData.map((row, idx) => {
+    const hasAssignment = row["Assigned To"] && row["Assigned To"] !== "";
+    const rowBg = activeTab === "combined" && !hasAssignment ? "bg-red-50" : "";
+    const actualIndex = startIdx + idx;
 
-              return (
-                <tr
-                  key={actualIndex}
-                  className={`${rowBg} hover:bg-gray-50`}
-                  onClick={() => onRowClick(actualIndex)}
-                >
-                  {columns.map((col) => {
-                    // Inline editors only on Combined for the two note columns
-                    if (isInlineCol(col)) {
-                      const barcode = row["Barcode#"];
-                      const noteObj = notesService?.getNote(barcode) || {
-                        meetingNote: "",
-                        requiresFollowUp: "",
-                      };
-                      const value =
-                        col === "Meeting Note"
-                          ? noteObj.meetingNote
-                          : noteObj.requiresFollowUp;
-                      const onChange =
-                        col === "Meeting Note"
-                          ? (v) => onInlineNoteChange(barcode, v)
-                          : (v) => onInlineFollowUpChange(barcode, v);
-                      const tdExtra =
-  col === "Meeting Note" ? "note-col"
-: col === "Requires Follow Up" ? "followup-col"
-: "";
+    return (
+      <tr
+        key={actualIndex}
+        className={`${rowBg} hover:bg-gray-50`}
+        onClick={() => onRowClick(actualIndex)}
+      >
+        {columns.map((col) => {
+          // Inline editors only on Combined for the two note columns
+          if (isInlineCol(col)) {
+            const barcode = row["Barcode#"] || row["Barcode"];
+            const noteObj = notesService?.getNote(barcode) || {
+              meetingNote: "",
+              requiresFollowUp: "",
+            };
 
-                     <td
-  key={col}
-  className={`px-4 py-3 text-sm text-gray-900 whitespace-normal break-words ${tdExtra}`}
-  style={{ maxWidth: 480 }}
-  onMouseDown={(e) => e.stopPropagation()}
-  onClick={(e) => e.stopPropagation()}
->
-  <EditableCell
-    value={value}
-    onChange={onChange}
-    onSave={() => onInlineSaveNow()}
-    multiline={col === "Meeting Note"}
-    inputWidth={
-      col === "Meeting Note" ? "w-20ch"
-    : col === "Requires Follow Up" ? "w-12ch"
-    : "w-full"
-    }
-    placeholder={col === "Meeting Note" ? "Type meeting note…" : "Follow up…"}
-  />
-</td>
-                      );
-                    }
+            const value =
+              col === "Meeting Note"
+                ? noteObj.meetingNote
+                : noteObj.requiresFollowUp;
 
-                    // Regular cells
-                    const content = String(row[col] ?? "");
-                    return (
-                      <td
-                        key={col}
-                        className="px-4 py-3 text-sm text-gray-900 whitespace-normal break-words"
-                        style={{ maxWidth: 300 }}
-                      >
-                        {content}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+            const handleChange =
+              col === "Meeting Note"
+                ? (v) => onInlineNoteChange(barcode, v)
+                : (v) => onInlineFollowUpChange(barcode, v);
+
+            const tdExtra = col === "Meeting Note" ? "note-col" : "followup-col";
+
+            return (
+              <td
+                key={col}
+                className={`px-4 py-3 text-sm text-gray-900 whitespace-normal break-words ${tdExtra}`}
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <EditableCell
+                  value={value}
+                  onChange={handleChange}
+                  onSave={onInlineSaveNow}
+                  multiline={col === "Meeting Note"}
+                  placeholder={
+                    col === "Meeting Note" ? "Type meeting note…" : "Follow up…"
+                  }
+                  // make follow-up ~12ch wide, meeting note uses full (note-col is wider via CSS)
+                  inputWidth={col === "Requires Follow Up" ? "w-12ch" : "w-full"}
+                />
+              </td>
+            );
+          }
+
+          // Regular cells
+          const content = String(row[col] ?? "");
+          return (
+            <td
+              key={col}
+              className="px-4 py-3 text-sm text-gray-900 whitespace-normal break-words"
+              style={{ maxWidth: 300 }}
+            >
+              {content}
+            </td>
+          );
+        })}
+      </tr>
+    );
+  })}
+</tbody>
+
 
       {totalPages > 1 && itemsPerPage < 99999 && (
         <div className="border-t bg-white px-6 py-4">
