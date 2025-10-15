@@ -21,7 +21,7 @@
 
 @keyframes logo-spin {
   from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+  to { transform: rotate(360deg); }
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -31,24 +31,30 @@
 }
 
 .card { padding: 2em; }
-
 .read-the-docs { color: #888; }
 
 /* ========== added for table column sizing ========== */
 
-/* Make the table respect explicit column widths */
-.col-18ch-table {
+/* Ensure table respects explicit widths */
+table.col-18ch-table {
   table-layout: fixed;
+  width: 100%;
 }
 
-/* “Requires Follow Up” column: add 16px to its previous ~12ch width */
-th.followup-col,
-td.followup-col {
+/* Make the “Requires Follow Up” column 16px wider than before */
+table.col-18ch-table th.followup-col,
+table.col-18ch-table td.followup-col {
   width: calc(12ch + 16px);
   min-width: calc(12ch + 16px);
 }
 
-/* Input width helper for the inline editor in that column */
+/* Prevent text overflow */
+table.col-18ch-table th,
+table.col-18ch-table td {
+  overflow-wrap: anywhere;
+}
+
+/* Inline input helper for that column */
 .w-followup {
   width: calc(12ch + 16px);
 }

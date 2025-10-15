@@ -313,38 +313,53 @@ const PaginatedTable = ({
   return (
     <div className="h-full flex flex-col bg-white rounded-lg shadow">
       {/* scrollable table wrapper */}
-      <div className="flex-1 overflow-auto">
-        <table className="w-full border-collapse col-18ch-table">
-          <thead className="bg-gray-50 border-b sticky top-0 z-10">
-            <tr>
-              {columns.map((col) => {
-                const thExtra =
-                  col === "Meeting Note"
-                    ? "note-col"
-                    : col === "Requires Follow Up"
-                    ? "followup-col"
-                    : "";
-                return (
-                  <th
-                    key={col}
-                    onClick={() => onSort(col)}
-                    className={`px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-normal bg-gray-50 cursor-pointer hover:bg-gray-100 ${thExtra}`}
-                    onMouseDown={(e) => e.stopPropagation()}
-                  >
-                    <div className="flex items-center gap-2">
-                      {col}
-                      {isInlineCol(col) && <span className="text-blue-500">✏️</span>}
-                      {sortConfig.key === col
-                        ? sortConfig.direction === "asc"
-                          ? <ChevronUp size={14} />
-                          : <ChevronDown size={14} />
-                        : null}
-                    </div>
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
+     <div className="flex-1 overflow-auto">
+  <table className="w-full border-collapse col-18ch-table">
+    {/* NEW: colgroup to pin the Requires Follow Up width (+16px) */}
+    <colgroup>
+      {columns.map((c) => (
+        <col
+          key={c}
+          // +2rem accounts for px-4 padding on td/th (1rem left + 1rem right)
+          style={
+            c === "Requires Follow Up"
+              ? { width: "calc(12ch + 16px + 2rem)", minWidth: "calc(12ch + 16px + 2rem)" }
+              : undefined
+          }
+        />
+      ))}
+    </colgroup>
+
+    <thead className="bg-gray-50 border-b sticky top-0 z-10">
+      <tr>
+        {columns.map((col) => {
+          const thExtra =
+            col === "Meeting Note"
+              ? "note-col"
+              : col === "Requires Follow Up"
+              ? "followup-col"
+              : "";
+          return (
+            <th
+              key={col}
+              onClick={() => onSort(col)}
+              className={`px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-normal bg-gray-50 cursor-pointer hover:bg-gray-100 ${thExtra}`}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-2">
+                {col}
+                {isInlineCol(col) && <span className="text-blue-500">✏️</span>}
+                {sortConfig.key === col
+                  ? sortConfig.direction === "asc"
+                    ? <ChevronUp size={14} />
+                    : <ChevronDown size={14} />
+                  : null}
+              </div>
+            </th>
+          );
+        })}
+      </tr>
+    </thead>
 
           <tbody className="bg-white divide-y">
             {paginatedData.map((row, idx) => {
