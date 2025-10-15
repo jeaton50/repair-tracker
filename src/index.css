@@ -12,6 +12,10 @@
   --followup-min-h: 4.5rem;/* ~72px ≈ 4–5 lines */
 }
 
+/* Helper fixed-width utilities for inputs */
+.w-20ch { width: 20ch; min-width: 20ch; max-width: 20ch; }
+.w-12ch { width: 12ch; min-width: 12ch; max-width: 12ch; }
+
 /* Bigger inline textarea for "Meeting Note" */
 textarea.note-input {
   width: 20ch;            /* show about 20 characters horizontally */
@@ -29,9 +33,12 @@ textarea.note-input {
   color: #111827;
 }
 
-/* Slightly smaller textarea for "Requires Follow Up" (if you inline it) */
-textarea.followup-input{
-  width: 100%;
+/* Slightly smaller input/textarea for "Requires Follow Up" (inline) */
+textarea.followup-input,
+input.followup-input{
+  width: 12ch;                 /* ~12 characters wide */
+  min-width: 12ch;
+  max-width: 100%;
   min-height: var(--followup-min-h);
   max-height: var(--note-max-h);
   resize: vertical;
@@ -46,7 +53,8 @@ textarea.followup-input{
 
 /* Focus ring to match Tailwind focus styles */
 textarea.note-input:focus,
-textarea.followup-input:focus{
+textarea.followup-input:focus,
+input.followup-input:focus{
   outline: none;
   border-color: transparent;
   box-shadow: 0 0 0 2px rgba(59,130,246,.5); /* ring-2 ring-blue-500/50 */
@@ -63,7 +71,7 @@ tr:hover td{
   background-color: rgba(59,130,246,0.04); /* light blue tint */
 }
 
-/* Make all table columns ~18 characters wide */
+/* Make all table columns ~18 characters wide by default */
 .col-18ch-table th,
 .col-18ch-table td {
   width: 18ch;
@@ -76,7 +84,15 @@ tr:hover td{
 /* EXCEPTION: Meeting Note column needs more room for 20ch textarea */
 .col-18ch-table th.note-col,
 .col-18ch-table td.note-col {
-  width: 22ch;      /* a little extra to fit padding/borders */
+  width: 22ch;  /* a little extra to fit padding/borders */
   min-width: 22ch;
   max-width: 22ch;
+}
+
+/* EXCEPTION: Requires Follow Up narrower (12ch target) */
+.col-18ch-table th.followup-col,
+.col-18ch-table td.followup-col {
+  width: 14ch;  /* small buffer around 12ch input */
+  min-width: 14ch;
+  max-width: 14ch;
 }

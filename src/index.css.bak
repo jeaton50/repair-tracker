@@ -66,10 +66,17 @@ tr:hover td{
 /* Make all table columns ~18 characters wide */
 .col-18ch-table th,
 .col-18ch-table td {
-  width: 18ch;        /* target width */
-  min-width: 18ch;    /* don’t shrink smaller */
-  max-width: 18ch;    /* keep consistent width */
-  white-space: normal;/* allow wrapping within the cell */
+  width: 18ch;
+  min-width: 18ch;
+  max-width: 18ch;
+  white-space: normal;
   word-break: break-word;
 }
 
+/* EXCEPTION: Meeting Note column needs more room for 20ch textarea */
+.col-18ch-table th.note-col,
+.col-18ch-table td.note-col {
+  width: 22ch;      /* a little extra to fit padding/borders */
+  min-width: 22ch;
+  max-width: 22ch;
+}
