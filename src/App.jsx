@@ -59,15 +59,13 @@ const EditableCell = ({
   onSave,
   multiline = false,
   placeholder = "",
-  inputWidth = "w-full", // e.g. "w-20ch" to force ~20 characters width
+  inputWidth = "w-full", // e.g. "w-12ch" for Follow Up
 }) => {
-  // Save on Ctrl/Cmd+S, stop row clicks while editing
   const onKeyDown = (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
       e.preventDefault();
       onSave?.();
     }
-    // For single-line, Enter saves
     if (!multiline && e.key === "Enter") {
       e.preventDefault();
       onSave?.();
@@ -82,29 +80,22 @@ const EditableCell = ({
     onKeyDown,
     onClick: (e) => e.stopPropagation(),
     onMouseDown: (e) => e.stopPropagation(),
-    className: `${inputWidth} text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent`,
+    className:
+      `${inputWidth} max-w-full block text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent`,
   };
 
   if (multiline) {
     return (
-      <div className="flex items-start gap-2">
+      <div className="flex flex-col items-stretch gap-2">
         <textarea
           {...commonProps}
           rows={6}
-          style={{ minHeight: "7rem" }} // nice multi-line height
-		  className={`${inputWidth} note-input text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+          style={{ minHeight: "7rem" }}
         />
-		<input
-  {...commonProps}
-  className={`${inputWidth} followup-input text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
-/>
         <button
           type="button"
-          className="shrink-0 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-          onClick={(e) => {
-            e.stopPropagation();
-            onSave?.();
-          }}
+          className="self-start px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+          onClick={(e) => { e.stopPropagation(); onSave?.(); }}
           title="Save now"
         >
           Save
@@ -112,6 +103,23 @@ const EditableCell = ({
       </div>
     );
   }
+
+  // single-line (e.g., Requires Follow Up)
+  return (
+    <div className="flex flex-col items-stretch gap-2">
+      <input {...commonProps} />
+      <button
+        type="button"
+        className="self-start px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+        onClick={(e) => { e.stopPropagation(); onSave?.(); }}
+        title="Save now"
+      >
+        Save
+      </button>
+    </div>
+  );
+};
+
 
   return (
     <div className="flex items-center gap-2">
