@@ -1,3 +1,4 @@
+/* ========== your existing styles ========== */
 #root {
   max-width: 1280px;
   margin: 0 auto;
@@ -19,12 +20,8 @@
 }
 
 @keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -33,10 +30,25 @@
   }
 }
 
-.card {
-  padding: 2em;
+.card { padding: 2em; }
+
+.read-the-docs { color: #888; }
+
+/* ========== added for table column sizing ========== */
+
+/* Make the table respect explicit column widths */
+.col-18ch-table {
+  table-layout: fixed;
 }
 
-.read-the-docs {
-  color: #888;
+/* “Requires Follow Up” column: add 16px to its previous ~12ch width */
+th.followup-col,
+td.followup-col {
+  width: calc(12ch + 16px);
+  min-width: calc(12ch + 16px);
+}
+
+/* Input width helper for the inline editor in that column */
+.w-followup {
+  width: calc(12ch + 16px);
 }
