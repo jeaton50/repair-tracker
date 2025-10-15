@@ -323,7 +323,7 @@ const PaginatedTable = ({
           // +2rem accounts for px-4 padding on td/th (1rem left + 1rem right)
           style={
             c === "Requires Follow Up"
-              ? { width: "calc(12ch + 34px + 2rem)", minWidth: "calc(12ch + 34px + 2rem)" }
+              ? { width: "calc(12ch + 46px + 2rem)", minWidth: "calc(12ch + 46px + 2rem)" }
               : undefined
           }
         />
