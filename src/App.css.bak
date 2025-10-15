@@ -44,8 +44,8 @@ table.col-18ch-table {
 /* Make the “Requires Follow Up” column 16px wider than before */
 table.col-18ch-table th.followup-col,
 table.col-18ch-table td.followup-col {
-  width: calc(12ch + 34px);
-  min-width: calc(12ch + 34px);
+  width: calc(12ch + 46px);
+  min-width: calc(12ch + 46px);
 }
 
 /* Prevent text overflow */
@@ -56,5 +56,5 @@ table.col-18ch-table td {
 
 /* Inline input helper for that column */
 .w-followup {
-  width: calc(12ch + 34px);
+  width: calc(12ch + 46px);
 }
