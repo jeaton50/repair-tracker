@@ -53,6 +53,7 @@ const useDebounce = (callback, delay) => {
 /* ---------- Tiny inline editor for Quick Edit ---------- */
 // ---------- Inline editable cell ----------
 // ---------- EditableCell ----------
+// ---------- EditableCell ----------
 const EditableCell = ({
   value,
   onChange,
@@ -108,6 +109,25 @@ const EditableCell = ({
       </div>
     );
   }
+
+  return (
+    <div className="flex items-center gap-2">
+      <input {...commonProps} />
+      <button
+        type="button"
+        className="shrink-0 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+        onClick={(e) => {
+          e.stopPropagation();
+          onSave?.();
+        }}
+        title="Save now"
+      >
+        Save
+      </button>
+    </div>
+  );
+};
+
 
   return (
     <div className="flex items-center gap-2">
